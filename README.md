@@ -4,6 +4,8 @@ Polls the Wallbox local database and publishes changes to an external MQTT broke
 Accepts changes from Home Assistant and updates the Wallbox local database.
 Supports Home Assistant discovery.
 
+Big thanks for all the contributions from @tronikos
+
 Once you set this up you will have local control of your Wallbox in Home Assistant via entities like this:
 
 ![image](https://github.com/jagheterfredrik/wallbox-tooling/assets/9987465/60cbf100-f985-4c9c-a546-9776b3564705)
