@@ -1,0 +1,15 @@
+[Unit]
+Description=MQTT Bridge
+After=network.target
+Requires=mysqld.service
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=1
+User=root
+ExecStart=/home/root/mqtt-bridge/venv/bin/python3 /home/root/mqtt-bridge/bridge.py
+
+[Install]
+WantedBy=multi-user.target
