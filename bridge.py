@@ -119,18 +119,17 @@ ENTITIES_CONFIG = {
             "device_class": "plug",
         },
     },
-    # TODO: Uncomment after fixing.
-    # Commented out because it doesn't reset to 0 in db after done charging or paused.
-    # "charging_power": {
-    #     "component": "sensor",
-    #     "config": {
-    #         "name": "Charging power",
-    #         "device_class": "power",
-    #         "unit_of_measurement": "W",
-    #         "state_class": "total",
-    #         "suggested_display_precision": 1,
-    #     },
-    # },
+    "charging_power": {
+        "component": "sensor",
+        "getter": lambda: float(redis_connection.hget("m2w", "tms.line1.power_watt.value")) + float(redis_connection.hget("m2w", "tms.line2.power_watt.value")) + float(redis_connection.hget("m2w", "tms.line3.power_watt.value")),
+        "config": {
+            "name": "Charging power",
+            "device_class": "power",
+            "unit_of_measurement": "W",
+            "state_class": "total",
+            "suggested_display_precision": 1,
+        },
+    },
     "status": {
         "component": "sensor",
         "getter": lambda: wallbox_status_codes[int(redis_connection.hget("m2w", "tms.charger_status"))],
@@ -179,7 +178,6 @@ SELECT
   `was_connected` AS cable_connected,
   IF(`was_connected` > 0, `active_session`.`energy_total`, `latest_session`.`energy_total`) AS added_energy,
   IF(`was_connected` > 0, `active_session`.`charged_range`, `latest_session`.`charged_range`) AS added_range,
-  `charging_power`,
   `charged_energy` AS cumulative_added_energy
 FROM `wallbox_config`, `active_session`, `power_outage_values`, (SELECT * FROM `session` ORDER BY `id` DESC LIMIT 1) latest_session;
 """
