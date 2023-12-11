@@ -15,6 +15,28 @@ import paho.mqtt.client as mqtt
 import pymysql.cursors
 import redis
 
+wallbox_status_codes = [
+    "Ready",
+    "Charging",
+    "Connected waiting car",
+    "Connected waiting schedule",
+    "Paused",
+    "Schedule end",
+    "Locked",
+    "Error",
+    "Connected waiting current assignation",
+    "Unconfigured power sharing",
+    "Queue by power boost",
+    "Discharging",
+    "Connected waiting admin auth for mid",
+    "Connected mid safety margin exceeded",
+    "OCPP unavailable",
+    "OCPP charge finishing",
+    "OCPP reserved",
+    "Updating",
+    "Queue by eco smart",
+]
+
 connection = pymysql.connect(
     host="localhost",
     user="root",
@@ -111,7 +133,7 @@ ENTITIES_CONFIG = {
     # },
     "status": {
         "component": "sensor",
-        "getter": lambda: int(redis_connection.hget("m2w", "tms.charger_status")),
+        "getter": lambda: wallbox_status_codes[int(redis_connection.hget("m2w", "tms.charger_status"))],
         "config": {
             "name": "Status",
         },
