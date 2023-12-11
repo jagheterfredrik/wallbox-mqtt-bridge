@@ -119,18 +119,16 @@ ENTITIES_CONFIG = {
             "device_class": "plug",
         },
     },
-    # TODO: Uncomment after fixing.
-    # Commented out because it doesn't reset to 0 in db after done charging or paused.
-    # "charging_power": {
-    #     "component": "sensor",
-    #     "config": {
-    #         "name": "Charging power",
-    #         "device_class": "power",
-    #         "unit_of_measurement": "W",
-    #         "state_class": "total",
-    #         "suggested_display_precision": 1,
-    #     },
-    # },
+    "charging_power": {
+        "component": "sensor",
+        "config": {
+            "name": "Charging power",
+            "device_class": "power",
+            "unit_of_measurement": "W",
+            "state_class": "total",
+            "suggested_display_precision": 1,
+        },
+    },
     "status": {
         "component": "sensor",
         "getter": lambda: wallbox_status_codes[int(redis_connection.hget("m2w", "tms.charger_status"))],
@@ -173,15 +171,25 @@ ENTITIES_CONFIG = {
 
 DB_QUERY = """
 SELECT
-  `charging_enable`,
-  `lock`,
-  `max_charging_current`,
-  `was_connected` AS cable_connected,
-  `charging_power`,
-  `latest_sess`.`energy_total` AS added_energy,
-  `charged_energy` AS cumulative_added_energy,
-  `latest_sess`.`charged_range` AS added_range
-FROM `wallbox_config`, `active_session`, `power_outage_values`, (SELECT * FROM `session` ORDER BY `id` DESC LIMIT 1) latest_sess;
+  `wallbox_config`.`charging_enable`,
+  `wallbox_config`.`lock`,
+  `wallbox_config`.`max_charging_current`,
+  `active_session`.`was_connected` AS cable_connected,
+  `latest_state_value`.`ac_current_rms_l1` / 10.0 * `latest_state_value`.`ac_voltage_rms_l1`
+    + `latest_state_value`.`ac_current_rms_l2` / 10.0 * `latest_state_value`.`ac_voltage_rms_l2`
+    + `latest_state_value`.`ac_current_rms_l2` / 10.0 * `latest_state_value`.`ac_voltage_rms_l3` AS charging_power,
+  `power_outage_values`.`charged_energy` AS cumulative_added_energy,
+  IF(`active_session`.`id` != 1,
+    `power_outage_values`.`charged_energy` - `active_session`.`start_charging_energy_tms`,
+    `latest_session`.`energy_total`) AS added_energy,
+  IF(`active_session`.`id` != 1,
+    `active_session`.`charged_range`,
+    `latest_session`.`charged_range`) AS added_range
+FROM `wallbox_config`,
+  `active_session`,
+  `power_outage_values`,
+  (SELECT * FROM `session` ORDER BY `id` DESC LIMIT 1) AS latest_session,
+  (SELECT * FROM `state_values` ORDER BY `id` DESC LIMIT 1) AS latest_state_value;
 """
 
 UPDATEABLE_WALLBOX_CONFIG_FIELDS = ["charging_enable", "lock", "max_charging_current"]
