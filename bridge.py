@@ -42,10 +42,13 @@ syscall = libc.syscall
 def pause_resume(val):
     # mq_open()
     mq = syscall(274, b'WALLBOX_MYWALLBOX_WALLBOX_STATEMACHINE', 0x2, 0x1c7)
+    if mq < 0:
+        return
     if val == 1:
         syscall(276, mq, b'EVENT_REQUEST_USER_ACTION#1.000000'.ljust(1024, b'\x00'), 1024, 0, None)
     else:
         syscall(276, mq, b'EVENT_REQUEST_USER_ACTION#2.000000'.ljust(1024, b'\x00'), 1024, 0, None)
+    os.close(mq)
 
 
 ENTITIES_CONFIG = {
