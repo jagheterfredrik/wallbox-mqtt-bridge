@@ -177,11 +177,11 @@ SELECT
   `lock`,
   `max_charging_current`,
   `was_connected` AS cable_connected,
+  IF(`was_connected` > 0, `active_session`.`energy_total`, `latest_session`.`energy_total`) AS added_energy,
+  IF(`was_connected` > 0, `active_session`.`charged_range`, `latest_session`.`charged_range`) AS added_range,
   `charging_power`,
-  `latest_sess`.`energy_total` AS added_energy,
-  `charged_energy` AS cumulative_added_energy,
-  `latest_sess`.`charged_range` AS added_range
-FROM `wallbox_config`, `active_session`, `power_outage_values`, (SELECT * FROM `session` ORDER BY `id` DESC LIMIT 1) latest_sess;
+  `charged_energy` AS cumulative_added_energy
+FROM `wallbox_config`, `active_session`, `power_outage_values`, (SELECT * FROM `session` ORDER BY `id` DESC LIMIT 1) latest_session;
 """
 
 mqttc = mqtt.Client()
