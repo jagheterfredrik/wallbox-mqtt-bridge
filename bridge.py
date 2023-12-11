@@ -192,8 +192,6 @@ FROM `wallbox_config`,
   (SELECT * FROM `state_values` ORDER BY `id` DESC LIMIT 1) AS latest_state_value;
 """
 
-UPDATEABLE_WALLBOX_CONFIG_FIELDS = ["charging_enable", "lock", "max_charging_current"]
-
 mqttc = mqtt.Client()
 
 try:
@@ -206,19 +204,15 @@ try:
     polling_interval_seconds = float(config["settings"]["polling_interval_seconds"])
     device_name = config["settings"]["device_name"]
 
-    with connection.cursor() as cursor:
-        # Prepare the MQTT topic name to include the serial number of the Wallbox
-        cursor.execute("SELECT `serial_num` FROM `charger_info`;")
-        result = cursor.fetchone()
-        assert result
-        serial_num = str(result["serial_num"])
+    # Prepare the MQTT topic name to include the serial number of the Wallbox
+    result = sql_execute("SELECT `serial_num` FROM `charger_info`;")
+    assert result
+    serial_num = str(result["serial_num"])
 
-        # Set max available current
-        cursor.execute("SELECT `max_avbl_current` FROM `state_values` ORDER BY `id` DESC LIMIT 1;")
-        result = cursor.fetchone()
-        assert result
-        max_avbl_current = str(result["max_avbl_current"])
-        ENTITIES_CONFIG["max_charging_current"]["config"]["max"] = int(max_avbl_current)
+    # Set max available current
+    result = sql_execute("SELECT `max_avbl_current` FROM `state_values` ORDER BY `id` DESC LIMIT 1;")
+    assert result
+    ENTITIES_CONFIG["max_charging_current"]["config"]["max"] = result["max_avbl_current"]
 
 
     topic_prefix = "wallbox_" + serial_num
@@ -268,10 +262,8 @@ try:
     published = {}
     while True:
         if mqttc.is_connected():
-            with connection.cursor() as cursor:
-                cursor.execute(DB_QUERY)
-                result = cursor.fetchone()
-                assert result
+            result = sql_execute(DB_QUERY)
+            assert result
             for k, v in ENTITIES_CONFIG.items():
                 if "getter" in v:
                     result[k] = v["getter"]()
