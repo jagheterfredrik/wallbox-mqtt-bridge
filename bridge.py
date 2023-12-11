@@ -250,6 +250,8 @@ try:
     mqttc.loop_start()
 
     published = {}
+    rate_limit = ["charging_power"]
+    latest_rate_limit_publish = time.time()
     while True:
         if mqttc.is_connected():
             result = sql_execute(DB_QUERY)
@@ -258,6 +260,11 @@ try:
                 if "getter" in v:
                     result[k] = v["getter"]()
             for key, val in result.items():
+                if key in rate_limit:
+                    if latest_rate_limit_publish + 10 > time.time():
+                        continue
+                    else:
+                        latest_rate_limit_publish = time.time()
                 if published.get(key) != val:
                     print("Publishing:", key, val)
                     mqttc.publish(topic_prefix + "/" + key + "/state", val, retain=True)
