@@ -8,7 +8,7 @@ Big thanks for all the contributions from @tronikos
 
 Once you set this up you will have local control of your Wallbox in Home Assistant via entities like this:
 
-![image](https://github.com/jagheterfredrik/wallbox-tooling/assets/9987465/60cbf100-f985-4c9c-a546-9776b3564705)
+![image](https://github.com/jagheterfredrik/wallbox-mqtt-bridge/assets/9987465/06488a5d-e6fe-4491-b11d-e7176792a7f5)
 
 ## Instructions
 
