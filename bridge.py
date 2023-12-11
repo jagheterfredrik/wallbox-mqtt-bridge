@@ -178,10 +178,10 @@ SELECT
   `max_charging_current`,
   `was_connected` AS cable_connected,
   `charging_power`,
-  GREATEST(`energy_total`, IF(`start_charging_energy_tms` > 0, `charged_energy` - `start_charging_energy_tms`, 0)) AS added_energy,
+  `latest_sess`.`energy_total` AS added_energy,
   `charged_energy` AS cumulative_added_energy,
-  `charged_range` AS added_range
-FROM `wallbox_config`, `active_session`, `power_outage_values`;
+  `latest_sess`.`charged_range` AS added_range
+FROM `wallbox_config`, `active_session`, `power_outage_values`, (SELECT * FROM `session` ORDER BY `id` DESC LIMIT 1) latest_sess;
 """
 
 UPDATEABLE_WALLBOX_CONFIG_FIELDS = ["charging_enable", "lock", "max_charging_current"]
