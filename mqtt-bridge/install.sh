@@ -2,28 +2,21 @@ if [ ! -d "$HOME/.wallbox" ]; then
     echo "This script should only be run on a Wallbox!"
     exit -1
 fi
-if [ ! -d "/home/root/mqtt-bridge" ]; then
-    echo "/home/root/mqtt-bridge not found!"
-    exit -1
-fi
-if [ ! -f "/home/root/mqtt-bridge/bridge.py" ]; then
-    echo "/home/root/mqtt-bridge/bridge.py not found!"
-    exit -1
-fi
-if [ ! -f "/home/root/mqtt-bridge/bridge.ini" ]; then
-    echo "/home/root/mqtt-bridge/bridge.ini not found!"
-    exit -1
-fi
-if [ ! -f "/home/root/mqtt-bridge/requirements.txt" ]; then
-    echo "/home/root/mqtt-bridge/requirements.txt not found!"
-    exit -1
-fi
-if [ ! -f "/home/root/mqtt-bridge/mqtt-bridge.service" ]; then
-    echo "/home/root/mqtt-bridge/mqtt-bridge.service not found!"
-    exit -1
-fi
 
-cd /home/root/mqtt-bridge
+base_dir="/home/root/mqtt-bridge"
+if [ ! -d "$base_dir" ]; then
+    echo "$base_dir not found!"
+    exit -1
+fi
+files=("bridge.py" "bridge.ini" "mqtt-bridge.service" "requirements.txt")
+for f in "${files[@]}"; do
+    if [ ! -f "$base_dir/$f" ]; then
+        echo "$base_dir/$f not found!"
+        exit -1
+    fi
+done
+
+cd "$base_dir"
 
 echo "Setting up virtual environment"
 python3 -m venv venv
