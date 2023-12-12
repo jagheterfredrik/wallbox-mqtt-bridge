@@ -172,14 +172,21 @@ ENTITIES_CONFIG = {
 
 DB_QUERY = """
 SELECT
-  `charging_enable`,
-  `lock`,
-  `max_charging_current`,
-  `was_connected` AS cable_connected,
-  IF(`was_connected` > 0, `active_session`.`energy_total`, `latest_session`.`energy_total`) AS added_energy,
-  IF(`was_connected` > 0, `active_session`.`charged_range`, `latest_session`.`charged_range`) AS added_range,
-  `charged_energy` AS cumulative_added_energy
-FROM `wallbox_config`, `active_session`, `power_outage_values`, (SELECT * FROM `session` ORDER BY `id` DESC LIMIT 1) latest_session;
+  `wallbox_config`.`charging_enable`,
+  `wallbox_config`.`lock`,
+  `wallbox_config`.`max_charging_current`,
+  `active_session`.`user_id` != 1 AS cable_connected,
+  `power_outage_values`.`charged_energy` AS cumulative_added_energy,
+  IF(`active_session`.`user_id` != 1,
+    `power_outage_values`.`charged_energy` - `active_session`.`start_charging_energy_tms`,
+    `latest_session`.`energy_total`) AS added_energy,
+  IF(`active_session`.`user_id` != 1,
+    `active_session`.`charged_range`,
+    `latest_session`.`charged_range`) AS added_range
+FROM `wallbox_config`,
+    `active_session`,
+    `power_outage_values`,
+    (SELECT * FROM `session` ORDER BY `id` DESC LIMIT 1) AS latest_session;
 """
 
 mqttc = mqtt.Client()
