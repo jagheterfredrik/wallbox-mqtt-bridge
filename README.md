@@ -21,37 +21,14 @@ Once you set this up you will have local control of your Wallbox in Home Assista
 5. Copy the files to your Wallbox using `scp` (On Windows you can use WinSCP). You should end up with the following files in your Wallbox:
    - `/home/root/mqtt-bridge/bridge.ini`
    - `/home/root/mqtt-bridge/bridge.py`
+   - `/home/root/mqtt-bridge/install.sh`
    - `/home/root/mqtt-bridge/mqtt-bridge.service`
+   - `/home/root/mqtt-bridge/requirements.txt`
+
+   On OS X/Linux this can be done using `scp -r /path/to/wallbox-mqtt-bridge/mqtt-bridge root@<wallbox-ip>:~`
 6. `ssh` to your Wallbox and run the following commands
 
 ```sh
 cd mqtt-bridge
-
-# Create python virtual environment
-python3 -m venv venv
-source venv/bin/activate
-
-# Install dependencies
-pip install paho-mqtt==1.6.1
-pip install pymysql==0.10.1
-pip install redis==3.5.3
-
-# Test the python script runs successfully
-python bridge.py
-
-# If it works press ctrl+C to kill it and continue below.
-# If it doesn't start over.
-
-# Setup systemd service to automatically start on boot
-ln -s /home/root/mqtt-bridge/mqtt-bridge.service /lib/systemd/system/mqtt-bridge.service
-systemctl enable mqtt-bridge
-
-# Start service
-systemctl start mqtt-bridge
-
-# Check status
-systemctl status mqtt-bridge
-
-# If you make any changes restart the service with
-systemctl restart mqtt-bridge
+./install.sh
 ```
