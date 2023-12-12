@@ -250,8 +250,10 @@ try:
     mqttc.loop_start()
 
     published = {}
-    rate_limit = ["charging_power"]
-    latest_rate_limit_publish = time.time()
+    # If we change more than this, we publish even though we're rate limited
+    rate_limit_deltas = { "charging_power": 100 }
+    rate_limit_s = 10.0
+    latest_rate_limit_publish = 0
     while True:
         if mqttc.is_connected():
             result = sql_execute(DB_QUERY)
@@ -259,16 +261,17 @@ try:
             for k, v in ENTITIES_CONFIG.items():
                 if "getter" in v:
                     result[k] = v["getter"]()
+            publish_rate_limited = latest_rate_limit_publish + rate_limit_s < time.time()
             for key, val in result.items():
-                if key in rate_limit:
-                    if latest_rate_limit_publish + 10 > time.time():
-                        continue
-                    else:
-                        latest_rate_limit_publish = time.time()
                 if published.get(key) != val:
+                    if key in rate_limit_deltas and not publish_rate_limited:
+                        if abs(published.get(key, 0) - val) < rate_limit_deltas[key]:
+                            continue
                     print("Publishing:", key, val)
                     mqttc.publish(topic_prefix + "/" + key + "/state", val, retain=True)
                     published[key] = val
+            if publish_rate_limited:
+                latest_rate_limit_publish = time.time()
         time.sleep(polling_interval_seconds)
 
 finally:
