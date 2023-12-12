@@ -284,4 +284,5 @@ try:
 
 finally:
     connection.close()
+    redis_connection.close()
     mqttc.loop_stop()
