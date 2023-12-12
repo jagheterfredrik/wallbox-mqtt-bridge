@@ -16,6 +16,6 @@ echo "Enable the service to start on boot.."
 systemctl enable mqtt-bridge
 
 echo "..and launch the service now"
-systemctl start mqtt-bridge
+systemctl restart mqtt-bridge
 
 echo "Done!"
