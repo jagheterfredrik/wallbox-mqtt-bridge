@@ -139,6 +139,7 @@ ENTITIES_CONFIG = {
     },
     "added_energy": {
         "component": "sensor",
+        "getter": lambda: float(redis_connection.hget("state", "scheduleEnergy")),
         "config": {
             "name": "Added energy",
             "device_class": "energy",
@@ -177,9 +178,6 @@ SELECT
   `wallbox_config`.`max_charging_current`,
   `active_session`.`unique_id` != 0 AS cable_connected,
   `power_outage_values`.`charged_energy` AS cumulative_added_energy,
-  IF(`active_session`.`unique_id` != 0,
-    `power_outage_values`.`charged_energy` - `active_session`.`start_charging_energy_tms`,
-    `latest_session`.`energy_total`) AS added_energy,
   IF(`active_session`.`unique_id` != 0,
     `active_session`.`charged_range`,
     `latest_session`.`charged_range`) AS added_range
@@ -258,7 +256,10 @@ try:
 
     published = {}
     # If we change more than this, we publish even though we're rate limited
-    rate_limit_deltas = { "charging_power": 100 }
+    rate_limit_deltas = {
+        "charging_power": 100,
+        "added_energy": 50,
+    }
     rate_limit_s = 10.0
     latest_rate_limit_publish = 0
     while True:
