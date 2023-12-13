@@ -10,6 +10,7 @@ import json
 import os
 import re
 import time
+from typing import Any, Dict  # noqa: F401
 
 import paho.mqtt.client as mqtt
 import pymysql.cursors
@@ -51,7 +52,8 @@ connection = pymysql.connect(
 # "SELECT @@GLOBAL.tx_isolation, @@tx_isolation;"
 connection.autocommit(True)
 
-redis_connection = redis.Redis(host='localhost', port=6379, db=0)
+redis_connection = redis.Redis(host="localhost", port=6379, db=0)
+
 
 def sql_execute(sql, *args):
     with connection.cursor() as cursor:
@@ -59,11 +61,18 @@ def sql_execute(sql, *args):
         return cursor.fetchone()
 
 
-# Below, we're using arm64 syscalls to interact with Posix mesage queues
+def redis_get(name, key):
+    result = redis_connection.hget(name, key)
+    assert result, name + "." + key + " not found in redis"
+    return result
+
+
+# Below, we're using arm64 syscalls to interact with Posix message queues
 # sysall 274 is mq_open(name, oflag, mode, attr)
 # sysall 276 is mq_timedsend(mqdes, msg_ptr, msg_len, msg_prio, abs_timeout)
 libc = ctypes.CDLL(None)
 syscall = libc.syscall
+
 
 def pause_resume(val):
     proposed_state = int(val)
@@ -71,17 +80,21 @@ def pause_resume(val):
     if proposed_state == current_state:
         return
 
-    mq = syscall(274, b'WALLBOX_MYWALLBOX_WALLBOX_STATEMACHINE', 0x2, 0x1c7, None)
+    mq = syscall(274, b"WALLBOX_MYWALLBOX_WALLBOX_STATEMACHINE", 0x2, 0x1C7, None)
     if mq < 0:
         return
     if proposed_state == 1:
-        syscall(276, mq, b'EVENT_REQUEST_USER_ACTION#1.000000'.ljust(1024, b'\x00'), 1024, 0, None)
+        syscall(276, mq, b"EVENT_REQUEST_USER_ACTION#1.000000".ljust(1024, b"\x00"), 1024, 0, None)
     elif proposed_state == 0:
-        syscall(276, mq, b'EVENT_REQUEST_USER_ACTION#2.000000'.ljust(1024, b'\x00'), 1024, 0, None)
+        syscall(276, mq, b"EVENT_REQUEST_USER_ACTION#2.000000".ljust(1024, b"\x00"), 1024, 0, None)
     os.close(mq)
 
+
 # Needed for unlock
-wallbox_uid = sql_execute("SELECT `user_id` FROM `users` WHERE `user_id` != 1 ORDER BY `user_id` DESC LIMIT 1;")["user_id"]
+wallbox_uid = sql_execute("SELECT `user_id` FROM `users` WHERE `user_id` != 1 ORDER BY `user_id` DESC LIMIT 1;")[
+    "user_id"
+]
+
 
 def lock_unlock(val):
     proposed_state = int(val)
@@ -89,13 +102,13 @@ def lock_unlock(val):
     if proposed_state == current_state:
         return
 
-    mq = syscall(274, b'WALLBOX_MYWALLBOX_WALLBOX_LOGIN', 0x2, 0x1c7, None)
+    mq = syscall(274, b"WALLBOX_MYWALLBOX_WALLBOX_LOGIN", 0x2, 0x1C7, None)
     if mq < 0:
         return
     if proposed_state == 1:
-        syscall(276, mq, b"EVENT_REQUEST_LOCK".ljust(1024, b'\x00'), 1024, 0, None)
+        syscall(276, mq, b"EVENT_REQUEST_LOCK".ljust(1024, b"\x00"), 1024, 0, None)
     elif proposed_state == 0:
-        syscall(276, mq, (b'EVENT_REQUEST_LOGIN#%d.000000' % wallbox_uid).ljust(1024, b'\x00'), 1024, 0, None)
+        syscall(276, mq, (b"EVENT_REQUEST_LOGIN#%d.000000" % wallbox_uid).ljust(1024, b"\x00"), 1024, 0, None)
     os.close(mq)
 
 
@@ -147,7 +160,9 @@ ENTITIES_CONFIG = {
     },
     "charging_power": {
         "component": "sensor",
-        "getter": lambda: float(redis_connection.hget("m2w", "tms.line1.power_watt.value")) + float(redis_connection.hget("m2w", "tms.line2.power_watt.value")) + float(redis_connection.hget("m2w", "tms.line3.power_watt.value")),
+        "getter": lambda: float(redis_get("m2w", "tms.line1.power_watt.value"))
+        + float(redis_get("m2w", "tms.line2.power_watt.value"))
+        + float(redis_get("m2w", "tms.line3.power_watt.value")),
         "config": {
             "name": "Charging power",
             "device_class": "power",
@@ -158,14 +173,14 @@ ENTITIES_CONFIG = {
     },
     "status": {
         "component": "sensor",
-        "getter": lambda: wallbox_status_codes[int(redis_connection.hget("m2w", "tms.charger_status"))],
+        "getter": lambda: wallbox_status_codes[int(redis_get("m2w", "tms.charger_status"))],
         "config": {
             "name": "Status",
         },
     },
     "added_energy": {
         "component": "sensor",
-        "getter": lambda: float(redis_connection.hget("state", "scheduleEnergy")),
+        "getter": lambda: float(redis_get("state", "scheduleEnergy")),
         "config": {
             "name": "Added energy",
             "device_class": "energy",
@@ -195,7 +210,7 @@ ENTITIES_CONFIG = {
             "icon": "mdi:map-marker-distance",
         },
     },
-}
+}  # type: Dict[str, Dict[str, Any]]
 
 DB_QUERY = """
 SELECT
@@ -234,7 +249,6 @@ try:
     result = sql_execute("SELECT `max_avbl_current` FROM `state_values` ORDER BY `id` DESC LIMIT 1;")
     assert result
     ENTITIES_CONFIG["max_charging_current"]["config"]["max"] = result["max_avbl_current"]
-
 
     topic_prefix = "wallbox_" + serial_num
     set_topic = topic_prefix + "/+/set"
@@ -280,14 +294,14 @@ try:
     mqttc.connect_async(mqtt_host, mqtt_port)
     mqttc.loop_start()
 
-    published = {}
+    published = {}  # type: Dict[str, Any]
     # If we change more than this, we publish even though we're rate limited
     rate_limit_deltas = {
         "charging_power": 100,
         "added_energy": 50,
     }
     rate_limit_s = 10.0
-    latest_rate_limit_publish = 0
+    latest_rate_limit_publish = 0.0
     while True:
         if mqttc.is_connected():
             result = sql_execute(DB_QUERY)

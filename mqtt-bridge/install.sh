@@ -1,3 +1,5 @@
+#!/bin/sh
+
 if [ ! -d "$HOME/.wallbox" ]; then
     echo "This script should only be run on a Wallbox!"
     exit -1
