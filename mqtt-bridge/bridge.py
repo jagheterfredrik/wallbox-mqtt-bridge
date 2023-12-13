@@ -67,7 +67,7 @@ syscall = libc.syscall
 
 def pause_resume(val):
     proposed_state = int(val)
-    current_state = sql_execute("SELECT `charger_enable` FROM wallbox_config;")["charger_enable"]
+    current_state = sql_execute("SELECT `charging_enable` FROM wallbox_config;")["charging_enable"]
     if proposed_state == current_state:
         return
 
