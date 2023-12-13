@@ -66,10 +66,24 @@ def pause_resume(val):
     mq = syscall(274, b'WALLBOX_MYWALLBOX_WALLBOX_STATEMACHINE', 0x2, 0x1c7)
     if mq < 0:
         return
-    if val == 1:
+    if val == b'1':
         syscall(276, mq, b'EVENT_REQUEST_USER_ACTION#1.000000'.ljust(1024, b'\x00'), 1024, 0, None)
     else:
         syscall(276, mq, b'EVENT_REQUEST_USER_ACTION#2.000000'.ljust(1024, b'\x00'), 1024, 0, None)
+    os.close(mq)
+
+# Needed for unlock
+wallbox_uid = sql_execute("SELECT `user_id` FROM `users` WHERE `user_id` != 1 ORDER BY `user_id` DESC LIMIT 1;")["user_id"]
+
+def lock_unlock(val):
+    # mq_open()
+    mq = syscall(274, b'WALLBOX_MYWALLBOX_WALLBOX_LOGIN', 0x2, 0x1c7)
+    if mq < 0:
+        return
+    if val == b'1':
+        syscall(276, mq, b"EVENT_REQUEST_LOCK".ljust(1024, b'\x00'), 1024, 0, None)
+    else:
+        syscall(276, mq, (b'EVENT_REQUEST_LOGIN#%d.000000' % wallbox_uid).ljust(1024, b'\x00'), 1024, 0, None)
     os.close(mq)
 
 
@@ -87,7 +101,7 @@ ENTITIES_CONFIG = {
     },
     "lock": {
         "component": "lock",
-        "setter": lambda val: sql_execute("UPDATE `wallbox_config` SET `lock`=%s;", val),
+        "setter": lock_unlock,
         "config": {
             "name": "Lock",
             "payload_lock": 1,
