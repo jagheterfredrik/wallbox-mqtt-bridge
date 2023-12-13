@@ -291,8 +291,7 @@ try:
     mqttc.on_message = _on_message
     mqttc.username_pw_set(mqtt_username, mqtt_password)
     print("Connecting to MQTT", mqtt_host, mqtt_port)
-    mqttc.connect_async(mqtt_host, mqtt_port)
-    mqttc.loop_start()
+    mqttc.connect(mqtt_host, mqtt_port)
 
     published = {}  # type: Dict[str, Any]
     # If we change more than this, we publish even though we're rate limited
@@ -320,9 +319,9 @@ try:
                     published[key] = val
             if publish_rate_limited:
                 latest_rate_limit_publish = time.time()
-        time.sleep(polling_interval_seconds)
+        mqttc.loop(timeout=polling_interval_seconds)
 
 finally:
+    mqttc.disconnect()
     connection.close()
     redis_connection.close()
-    mqttc.loop_stop()
