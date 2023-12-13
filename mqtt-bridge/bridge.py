@@ -150,6 +150,7 @@ ENTITIES_CONFIG = {
     },
     "cable_connected": {
         "component": "binary_sensor",
+        "getter": lambda: int(redis_get("m2w", "tms.charger_status")) not in (0, 6),
         "config": {
             "name": "Cable connected",
             "payload_on": 1,
@@ -217,7 +218,6 @@ SELECT
   `wallbox_config`.`charging_enable`,
   `wallbox_config`.`lock`,
   `wallbox_config`.`max_charging_current`,
-  `active_session`.`unique_id` != 0 AS cable_connected,
   `power_outage_values`.`charged_energy` AS cumulative_added_energy,
   IF(`active_session`.`unique_id` != 0,
     `active_session`.`charged_range`,
