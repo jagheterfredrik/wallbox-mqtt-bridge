@@ -67,58 +67,48 @@ def redis_get(name, key):
     return result
 
 
+# Below, we're using arm64 syscalls to interact with Posix message queues
+# sysall 274 is mq_open(name, oflag, mode, attr)
+# sysall 276 is mq_timedsend(mqdes, msg_ptr, msg_len, msg_prio, abs_timeout)
 libc = ctypes.CDLL(None)
 syscall = libc.syscall
 
 
 def pause_resume(val):
-    # mq_open()
-    mq = syscall(274, b"WALLBOX_MYWALLBOX_WALLBOX_STATEMACHINE", 0x2, 0x1C7)
+    proposed_state = int(val)
+    current_state = sql_execute("SELECT `charger_enable` FROM wallbox_config;")["charger_enable"]
+    if proposed_state == current_state:
+        return
+
+    mq = syscall(274, b"WALLBOX_MYWALLBOX_WALLBOX_STATEMACHINE", 0x2, 0x1C7, None)
     if mq < 0:
         return
-    if val == b"1":
-        syscall(
-            276,
-            mq,
-            b"EVENT_REQUEST_USER_ACTION#1.000000".ljust(1024, b"\x00"),
-            1024,
-            0,
-            None,
-        )
-    else:
-        syscall(
-            276,
-            mq,
-            b"EVENT_REQUEST_USER_ACTION#2.000000".ljust(1024, b"\x00"),
-            1024,
-            0,
-            None,
-        )
+    if proposed_state == 1:
+        syscall(276, mq, b"EVENT_REQUEST_USER_ACTION#1.000000".ljust(1024, b"\x00"), 1024, 0, None)
+    elif proposed_state == 0:
+        syscall(276, mq, b"EVENT_REQUEST_USER_ACTION#2.000000".ljust(1024, b"\x00"), 1024, 0, None)
     os.close(mq)
 
 
 # Needed for unlock
-wallbox_uid = sql_execute(
-    "SELECT `user_id` FROM `users` WHERE `user_id` != 1 ORDER BY `user_id` DESC LIMIT 1;"
-)["user_id"]
+wallbox_uid = sql_execute("SELECT `user_id` FROM `users` WHERE `user_id` != 1 ORDER BY `user_id` DESC LIMIT 1;")[
+    "user_id"
+]
 
 
 def lock_unlock(val):
-    # mq_open()
-    mq = syscall(274, b"WALLBOX_MYWALLBOX_WALLBOX_LOGIN", 0x2, 0x1C7)
+    proposed_state = int(val)
+    current_state = sql_execute("SELECT `lock` FROM wallbox_config;")["lock"]
+    if proposed_state == current_state:
+        return
+
+    mq = syscall(274, b"WALLBOX_MYWALLBOX_WALLBOX_LOGIN", 0x2, 0x1C7, None)
     if mq < 0:
         return
-    if val == b"1":
+    if proposed_state == 1:
         syscall(276, mq, b"EVENT_REQUEST_LOCK".ljust(1024, b"\x00"), 1024, 0, None)
-    else:
-        syscall(
-            276,
-            mq,
-            (b"EVENT_REQUEST_LOGIN#%d.000000" % wallbox_uid).ljust(1024, b"\x00"),
-            1024,
-            0,
-            None,
-        )
+    elif proposed_state == 0:
+        syscall(276, mq, (b"EVENT_REQUEST_LOGIN#%d.000000" % wallbox_uid).ljust(1024, b"\x00"), 1024, 0, None)
     os.close(mq)
 
 
@@ -148,9 +138,7 @@ ENTITIES_CONFIG = {
     },
     "max_charging_current": {
         "component": "number",
-        "setter": lambda val: sql_execute(
-            "UPDATE `wallbox_config` SET `max_charging_current`=%s;", val
-        ),
+        "setter": lambda val: sql_execute("UPDATE `wallbox_config` SET `max_charging_current`=%s;", val),
         "config": {
             "name": "Max charging current",
             "command_topic": "~/set",
@@ -185,9 +173,7 @@ ENTITIES_CONFIG = {
     },
     "status": {
         "component": "sensor",
-        "getter": lambda: wallbox_status_codes[
-            int(redis_get("m2w", "tms.charger_status"))
-        ],
+        "getter": lambda: wallbox_status_codes[int(redis_get("m2w", "tms.charger_status"))],
         "config": {
             "name": "Status",
         },
@@ -260,13 +246,9 @@ try:
     serial_num = str(result["serial_num"])
 
     # Set max available current
-    result = sql_execute(
-        "SELECT `max_avbl_current` FROM `state_values` ORDER BY `id` DESC LIMIT 1;"
-    )
+    result = sql_execute("SELECT `max_avbl_current` FROM `state_values` ORDER BY `id` DESC LIMIT 1;")
     assert result
-    ENTITIES_CONFIG["max_charging_current"]["config"]["max"] = result[
-        "max_avbl_current"
-    ]
+    ENTITIES_CONFIG["max_charging_current"]["config"]["max"] = result["max_avbl_current"]
 
     topic_prefix = "wallbox_" + serial_num
     set_topic = topic_prefix + "/+/set"
@@ -300,10 +282,10 @@ try:
         if m:
             field = m.group(1)
             if field in ENTITIES_CONFIG and "setter" in ENTITIES_CONFIG[field]:
-                print("Setting:", field, message.payload)
+                print("Setting:", field, message.payload.decode())
                 ENTITIES_CONFIG[field]["setter"](message.payload)
             else:
-                print("Setting unsupported:", field, message.payload)
+                print("Setting unsupported for field", field)
 
     mqttc.on_connect = _on_connect
     mqttc.on_message = _on_message
@@ -327,9 +309,7 @@ try:
             for k, v in ENTITIES_CONFIG.items():
                 if "getter" in v:
                     result[k] = v["getter"]()
-            publish_rate_limited = (
-                latest_rate_limit_publish + rate_limit_s < time.time()
-            )
+            publish_rate_limited = latest_rate_limit_publish + rate_limit_s < time.time()
             for key, val in result.items():
                 if published.get(key) != val:
                     if key in rate_limit_deltas and not publish_rate_limited:
