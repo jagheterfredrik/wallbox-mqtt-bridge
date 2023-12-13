@@ -58,17 +58,25 @@ def sql_execute(sql, *args):
         cursor.execute(sql, args)
         return cursor.fetchone()
 
+
+# Below, we're using arm64 syscalls to interact with Posix mesage queues
+# sysall 274 is mq_open(name, oflag, mode, attr)
+# sysall 276 is mq_timedsend(mqdes, msg_ptr, msg_len, msg_prio, abs_timeout)
 libc = ctypes.CDLL(None)
 syscall = libc.syscall
 
 def pause_resume(val):
-    # mq_open()
-    mq = syscall(274, b'WALLBOX_MYWALLBOX_WALLBOX_STATEMACHINE', 0x2, 0x1c7)
+    proposed_state = int(val)
+    current_state = sql_execute("SELECT `charger_enable` FROM wallbox_config;")["charger_enable"]
+    if proposed_state == current_state:
+        return
+
+    mq = syscall(274, b'WALLBOX_MYWALLBOX_WALLBOX_STATEMACHINE', 0x2, 0x1c7, None)
     if mq < 0:
         return
-    if val == b'1':
+    if proposed_state == 1:
         syscall(276, mq, b'EVENT_REQUEST_USER_ACTION#1.000000'.ljust(1024, b'\x00'), 1024, 0, None)
-    else:
+    elif proposed_state == 0:
         syscall(276, mq, b'EVENT_REQUEST_USER_ACTION#2.000000'.ljust(1024, b'\x00'), 1024, 0, None)
     os.close(mq)
 
@@ -76,13 +84,17 @@ def pause_resume(val):
 wallbox_uid = sql_execute("SELECT `user_id` FROM `users` WHERE `user_id` != 1 ORDER BY `user_id` DESC LIMIT 1;")["user_id"]
 
 def lock_unlock(val):
-    # mq_open()
-    mq = syscall(274, b'WALLBOX_MYWALLBOX_WALLBOX_LOGIN', 0x2, 0x1c7)
+    proposed_state = int(val)
+    current_state = sql_execute("SELECT `lock` FROM wallbox_config;")["lock"]
+    if proposed_state == current_state:
+        return
+
+    mq = syscall(274, b'WALLBOX_MYWALLBOX_WALLBOX_LOGIN', 0x2, 0x1c7, None)
     if mq < 0:
         return
-    if val == b'1':
+    if proposed_state == 1:
         syscall(276, mq, b"EVENT_REQUEST_LOCK".ljust(1024, b'\x00'), 1024, 0, None)
-    else:
+    elif proposed_state == 0:
         syscall(276, mq, (b'EVENT_REQUEST_LOGIN#%d.000000' % wallbox_uid).ljust(1024, b'\x00'), 1024, 0, None)
     os.close(mq)
 
@@ -256,10 +268,10 @@ try:
         if m:
             field = m.group(1)
             if field in ENTITIES_CONFIG and "setter" in ENTITIES_CONFIG[field]:
-                print("Setting:", field, message.payload)
+                print("Setting:", field, message.payload.decode())
                 ENTITIES_CONFIG[field]["setter"](message.payload)
             else:
-                print("Setting unsupported:", field, message.payload)
+                print("Setting unsupported for field", field)
 
     mqttc.on_connect = _on_connect
     mqttc.on_message = _on_message
