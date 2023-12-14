@@ -150,7 +150,7 @@ ENTITIES_CONFIG = {
     },
     "cable_connected": {
         "component": "binary_sensor",
-        "getter": lambda: int(redis_get("m2w", "tms.charger_status")) not in (0, 6),
+        "getter": lambda: int(int(redis_get("m2w", "tms.charger_status")) not in (0, 6)),
         "config": {
             "name": "Cable connected",
             "payload_on": 1,
