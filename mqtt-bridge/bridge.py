@@ -61,9 +61,15 @@ def sql_execute(sql, *args):
         return cursor.fetchone()
 
 
-def redis_get(name, key):
+def redis_hget(name, key):
     result = redis_connection.hget(name, key)
-    assert result, name + "." + key + " not found in redis"
+    assert result, name + " " + key + " not found in redis"
+    return result
+
+
+def redis_hmget(name, keys):
+    result = redis_connection.hmget(name, keys)
+    assert result
     return result
 
 
@@ -150,7 +156,7 @@ ENTITIES_CONFIG = {
     },
     "cable_connected": {
         "component": "binary_sensor",
-        "getter": lambda: int(int(redis_get("m2w", "tms.charger_status")) not in (0, 6)),
+        "getter": lambda: int(int(redis_hget("m2w", "tms.charger_status")) not in (0, 6)),
         "config": {
             "name": "Cable connected",
             "payload_on": 1,
@@ -161,9 +167,12 @@ ENTITIES_CONFIG = {
     },
     "charging_power": {
         "component": "sensor",
-        "getter": lambda: float(redis_get("m2w", "tms.line1.power_watt.value"))
-        + float(redis_get("m2w", "tms.line2.power_watt.value"))
-        + float(redis_get("m2w", "tms.line3.power_watt.value")),
+        "getter": lambda: sum(
+            float(v)
+            for v in redis_hmget(
+                "m2w", ["tms.line1.power_watt.value", "tms.line2.power_watt.value", "tms.line3.power_watt.value"]
+            )
+        ),
         "config": {
             "name": "Charging power",
             "device_class": "power",
@@ -174,14 +183,14 @@ ENTITIES_CONFIG = {
     },
     "status": {
         "component": "sensor",
-        "getter": lambda: wallbox_status_codes[int(redis_get("m2w", "tms.charger_status"))],
+        "getter": lambda: wallbox_status_codes[int(redis_hget("m2w", "tms.charger_status"))],
         "config": {
             "name": "Status",
         },
     },
     "added_energy": {
         "component": "sensor",
-        "getter": lambda: float(redis_get("state", "scheduleEnergy")),
+        "getter": lambda: float(redis_hget("state", "scheduleEnergy")),
         "config": {
             "name": "Added energy",
             "device_class": "energy",
