@@ -242,12 +242,14 @@ mqttc = mqtt.Client()
 try:
     config = configparser.ConfigParser()
     config.read(os.path.join(os.path.dirname(__file__), "bridge.ini"))
-    mqtt_host = config["mqtt"]["host"]
-    mqtt_port = int(config["mqtt"]["port"])
-    mqtt_username = config["mqtt"]["username"]
-    mqtt_password = config["mqtt"]["password"]
-    polling_interval_seconds = float(config["settings"]["polling_interval_seconds"])
-    device_name = config["settings"]["device_name"]
+    mqtt_host = config.get("mqtt", "host")
+    mqtt_port = config.getint("mqtt", "port")
+    mqtt_username = config.get("mqtt", "username")
+    mqtt_password = config.get("mqtt", "password")
+    polling_interval_seconds = config.getfloat("settings", "polling_interval_seconds")
+    device_name = config.get("settings", "device_name")
+    if config.getboolean("settings", "legacy_locking", fallback=False):
+        ENTITIES_CONFIG["lock"]["setter"] = lambda val: sql_execute("UPDATE `wallbox_config` SET `lock`=%s;", val)
 
     # Prepare the MQTT topic name to include the serial number of the Wallbox
     result = sql_execute("SELECT `serial_num` FROM `charger_info`;")
