@@ -1,4 +1,6 @@
 ---
+# Some expensive checks are disabled by default. To run all:
+# pre-commit run --all-files --hook-stage manual
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.5.0
@@ -16,7 +18,7 @@ repos:
       - id: mixed-line-ending
       - id: trailing-whitespace
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.1.7
+    rev: v0.1.8
     hooks:
       - id: ruff
         args: [--fix]
@@ -30,6 +32,11 @@ repos:
     rev: v2.2.6
     hooks:
       - id: codespell
+  - repo: https://github.com/koalaman/shellcheck-precommit
+    rev: v0.9.0
+    hooks:
+      - id: shellcheck
+        stages: [manual]
 
 ci:
   autoupdate_schedule: monthly
