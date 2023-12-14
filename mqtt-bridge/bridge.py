@@ -248,7 +248,6 @@ try:
     mqtt_password = config.get("mqtt", "password")
     polling_interval_seconds = config.getfloat("settings", "polling_interval_seconds")
     device_name = config.get("settings", "device_name")
-    # Ugly hack
     if config.getboolean("settings", "legacy_locking", fallback=False):
         ENTITIES_CONFIG["lock"]["setter"] = lambda val: sql_execute("UPDATE `wallbox_config` SET `lock`=%s;", val)
 
