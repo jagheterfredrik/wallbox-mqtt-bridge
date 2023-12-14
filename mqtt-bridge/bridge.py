@@ -248,6 +248,10 @@ try:
     mqtt_password = config["mqtt"]["password"]
     polling_interval_seconds = float(config["settings"]["polling_interval_seconds"])
     device_name = config["settings"]["device_name"]
+    # Ugly hack
+    if config["settings"].getboolean("legacy_locking", fallback=False):
+        print("reset")
+        ENTITIES_CONFIG["lock"]["setter"] = lambda val: sql_execute("UPDATE `wallbox_config` SET `lock`=%s;", val)
 
     # Prepare the MQTT topic name to include the serial number of the Wallbox
     result = sql_execute("SELECT `serial_num` FROM `charger_info`;")
