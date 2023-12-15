@@ -42,6 +42,47 @@ wallbox_status_codes = [
     "Queue by eco smart",
 ]
 
+state_machine_states = {
+    0xE: "Error",
+    0xF: "Unviable",
+    0xA1: "Ready",
+    0xA2: "PS Unconfig",
+    0xA3: "Unavailable",
+    0xA4: "Finish",
+    0xA5: "Reserved",
+    0xA6: "Updating",
+    0xB1: "Connected 1",  # Make new session?
+    0xB2: "Connected 2",
+    0xB3: "Connected 3",  # Waiting schedule ?
+    0xB4: "Connected 4",
+    0xB5: "Connected 5",  # Connected waiting car ?
+    0xB6: "Connected 6",  # Paused
+    0xB7: "Waiting 1",
+    0xB8: "Waiting 2",
+    0xB9: "Waiting 3",
+    0xBA: "Waiting 4",
+    0xBB: "Mid 1",
+    0xBC: "Mid 2",
+    0xBD: "Waiting eco power",
+    0xC1: "Charging 1",
+    0xC2: "Charging 2",
+    0xC3: "Discharging 1",
+    0xC4: "Discharging 2",
+    0xD1: "Lock",
+    0xD2: "Wait Unlock",
+}
+
+control_pilot_states = {
+    0xE: "Error",
+    0xF: "Failure",
+    0xA1: "Ready 1",  # S1 at 12V, car not connected
+    0xA2: "Ready 2",
+    0xB1: "Connected 1",  # S1 at 9V, car connected not allowed charge
+    0xB2: "Connected 2",  # S1 at Oscillator, car connected allowed charge
+    0xC1: "Charging 1",
+    0xC2: "Charging 2",  # S2 closed
+}
+
 connection = pymysql.connect(
     host="localhost",
     user="root",
@@ -132,6 +173,16 @@ def effective_status_string():
     return wallbox_status_codes[tms_status]
 
 
+def state_machine_state_name():
+    state = redis_hget("state", "session.state")
+    return state.decode() + ": " + state_machine_states.get(int(state))
+
+
+def control_pilot_state_name():
+    state = redis_hget("state", "ctrlPilot")
+    return state.decode() + ": " + control_pilot_states.get(int(state))
+
+
 ENTITIES_CONFIG = {
     "charging_enable": {
         "component": "switch",
@@ -212,6 +263,41 @@ ENTITIES_CONFIG = {
         "getter": effective_status_string,
         "config": {
             "name": "Status",
+        },
+    },
+    "session_state": {
+        "component": "sensor",
+        "getter": state_machine_state_name,
+        "config": {
+            "name": "Session state",
+        },
+    },
+    "m2w_status": {
+        "component": "sensor",
+        "getter": lambda: redis_hget("m2w", "tms.charger_status"),
+        "config": {
+            "name": "M2W status",
+        },
+    },
+    "ctrl_pilot": {
+        "component": "sensor",
+        "getter": control_pilot_state_name,
+        "config": {
+            "name": "Control pilot",
+        },
+    },
+    "s2_open": {
+        "component": "sensor",
+        "getter": lambda: redis_hget("state", "S2open"),
+        "config": {
+            "name": "S2 open",
+        },
+    },
+    "session_start_timestamp": {
+        "component": "sensor",
+        "getter": lambda: redis_hget("state", "session.start_timestamp"),
+        "config": {
+            "name": "Session start timestamp",
         },
     },
     "added_energy": {
