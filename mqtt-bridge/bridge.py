@@ -123,7 +123,7 @@ def effective_status_string():
     tms_status = int(redis_hget("m2w", "tms.charger_status"))
     # The wallbox app shows a paused Wallbox without an active session as locked
     if (
-        tms_status == 4  # Paused
+        tms_status in (2, 3, 4)  # Connected waiting car, Connected waiting schedule, Paused
         and sql_execute("SELECT (`user_id` = 1) AS no_active_session FROM active_session;")["no_active_session"]
     ):
         tms_status = 6  # Locked
