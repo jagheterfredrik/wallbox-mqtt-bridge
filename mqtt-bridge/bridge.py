@@ -124,7 +124,7 @@ def effective_status_string():
     # The wallbox app shows a paused Wallbox without an active session as locked
     if (
         tms_status == 4
-        and not sql_execute("SELECT (`user_id` != 1) AS active_session FROM active_session;")["active_session"]
+        and sql_execute("SELECT (`user_id` = 1) AS no_active_session FROM active_session;")["no_active_session"]
     ):
         tms_status = 6
     return wallbox_status_codes[tms_status]
