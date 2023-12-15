@@ -118,6 +118,18 @@ def lock_unlock(val):
     os.close(mq)
 
 
+# Applies some additional rules to the internal state and returns the status as a string
+def effective_status_string():
+    tms_status = int(redis_hget("m2w", "tms.charger_status"))
+    # The wallbox app shows a paused Wallbox without an active session as locked
+    if (
+        tms_status == 4
+        and not sql_execute("SELECT (`user_id` != 1) AS active_session FROM active_session;")["active_session"]
+    ):
+        tms_status = 6
+    return wallbox_status_codes[tms_status]
+
+
 ENTITIES_CONFIG = {
     "charging_enable": {
         "component": "switch",
@@ -183,7 +195,7 @@ ENTITIES_CONFIG = {
     },
     "status": {
         "component": "sensor",
-        "getter": lambda: wallbox_status_codes[int(redis_hget("m2w", "tms.charger_status"))],
+        "getter": effective_status_string,
         "config": {
             "name": "Status",
         },
