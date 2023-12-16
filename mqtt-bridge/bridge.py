@@ -121,7 +121,7 @@ def lock_unlock(val):
 # Applies some additional rules to the internal state and returns the status as a string
 def effective_status_string():
     tms_status = int(redis_hget("m2w", "tms.charger_status"))
-    state = redis_hget("state", "session.state")
+    state = int(redis_hget("state", "session.state"))
     # The wallbox app shows locked for longer than the TMS status
     if state == 210:  # Wait unlock
         tms_status = 6  # Locked
