@@ -7,6 +7,7 @@ Supports Home Assistant discovery.
 import configparser
 import ctypes
 import json
+import logging
 import os
 import re
 import time
@@ -15,6 +16,9 @@ from typing import Any, Dict  # noqa: F401
 import paho.mqtt.client as mqtt
 import pymysql.cursors
 import redis
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("mqtt-bridge")
 
 wallbox_status_codes = [
     "Ready",
@@ -276,7 +280,7 @@ try:
     set_topic_re = re.compile(topic_prefix + "/(.*)/set")
 
     def _on_connect(client, userdata, flags, rc):
-        print("Connected to MQTT with", rc)
+        logger.info("Connected to MQTT with %d", rc)
         if rc == mqtt.MQTT_ERR_SUCCESS:
             mqttc.subscribe(set_topic)
             for k, v in ENTITIES_CONFIG.items():
@@ -303,15 +307,20 @@ try:
         if m:
             field = m.group(1)
             if field in ENTITIES_CONFIG and "setter" in ENTITIES_CONFIG[field]:
-                print("Setting:", field, message.payload.decode())
+                logger.info("Setting: %s", field, message.payload.decode())
                 ENTITIES_CONFIG[field]["setter"](message.payload)
             else:
-                print("Setting unsupported for field", field)
+                logger.info("Setting unsupported for field %s", field)
 
+    def on_disconnect(client, userdata, rc):
+        if rc != 0:
+            raise Exception("Disconnected")
+
+    mqttc.on_disconnect = on_disconnect
     mqttc.on_connect = _on_connect
     mqttc.on_message = _on_message
     mqttc.username_pw_set(mqtt_username, mqtt_password)
-    print("Connecting to MQTT", mqtt_host, mqtt_port)
+    logger.info("Connecting to MQTT %s %s", mqtt_host, mqtt_port)
     mqttc.connect(mqtt_host, mqtt_port)
 
     published = {}  # type: Dict[str, Any]
@@ -335,7 +344,7 @@ try:
                     if key in rate_limit_deltas and not publish_rate_limited:
                         if abs(published.get(key, 0) - val) < rate_limit_deltas[key]:
                             continue
-                    print("Publishing:", key, val)
+                    logger.info("Publishing: %s %s", key, val)
                     mqttc.publish(topic_prefix + "/" + key + "/state", val, retain=True)
                     published[key] = val
             if publish_rate_limited:
