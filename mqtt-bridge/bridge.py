@@ -307,7 +307,7 @@ try:
         if m:
             field = m.group(1)
             if field in ENTITIES_CONFIG and "setter" in ENTITIES_CONFIG[field]:
-                logger.info("Setting: %s", field, message.payload.decode())
+                logger.info("Setting: %s %s", field, message.payload.decode())
                 ENTITIES_CONFIG[field]["setter"](message.payload)
             else:
                 logger.info("Setting unsupported for field %s", field)
