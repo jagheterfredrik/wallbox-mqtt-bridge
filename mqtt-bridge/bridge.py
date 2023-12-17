@@ -178,6 +178,7 @@ ENTITIES_CONFIG = {
             "max": 100,
             "icon": "mdi:brightness-percent",
             "unit_of_measurement": "%",
+            "entity_category": "config",
         },
     },
     "cable_connected": {
