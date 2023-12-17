@@ -168,6 +168,18 @@ ENTITIES_CONFIG = {
             "device_class": "current",
         },
     },
+    "halo_brightness": {
+        "component": "number",
+        "setter": lambda val: sql_execute("UPDATE `wallbox_config` SET `halo_brightness`=%s;", val),
+        "config": {
+            "name": "Halo Brightness",
+            "command_topic": "~/set",
+            "min": 0,
+            "max": 100,
+            "icon": "mdi:brightness-percent",
+            "unit_of_measurement": "%",
+        },
+    },
     "cable_connected": {
         "component": "binary_sensor",
         "getter": lambda: int(int(redis_hget("m2w", "tms.charger_status")) not in (0, 6)),
@@ -241,6 +253,7 @@ SELECT
   `wallbox_config`.`charging_enable`,
   `wallbox_config`.`lock`,
   `wallbox_config`.`max_charging_current`,
+  `wallbox_config`.`halo_brightness`,
   `power_outage_values`.`charged_energy` AS cumulative_added_energy,
   IF(`active_session`.`unique_id` != 0,
     `active_session`.`charged_range`,
