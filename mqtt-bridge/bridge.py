@@ -129,6 +129,8 @@ def effective_status_string():
     # The wallbox app shows locked for longer than the TMS status
     if state == 210:  # Wait unlock
         tms_status = 6  # Locked
+    elif state == 186:
+        return "Waiting in queue by Power Boost"
     return wallbox_status_codes[tms_status]
 
 
