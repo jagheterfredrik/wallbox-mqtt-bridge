@@ -55,12 +55,12 @@ state_machine_states = {
     0xB2: "Connected 2",
     0xB3: "Connected 3",  # Waiting schedule ?
     0xB4: "Connected 4",
-    0xB5: "Connected 5",  # Connected waiting car ?
+    0xB5: "Connected waiting car",
     0xB6: "Connected 6",  # Paused
     0xB7: "Waiting 1",
     0xB8: "Waiting 2",
     0xB9: "Waiting 3",
-    0xBA: "Waiting 4",
+    0xBA: "Waiting in queue by Power Boost",
     0xBB: "Mid 1",
     0xBC: "Mid 2",
     0xBD: "Waiting eco power",
