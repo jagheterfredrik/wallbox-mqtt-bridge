@@ -288,11 +288,13 @@ try:
     topic_prefix = "wallbox_" + serial_num
     set_topic = topic_prefix + "/+/set"
     set_topic_re = re.compile(topic_prefix + "/(.*)/set")
+    availability_topic = topic_prefix + "/availability"
 
     def _on_connect(client, userdata, flags, rc):
         logger.info("Connected to MQTT with %d", rc)
         if rc == mqtt.MQTT_ERR_SUCCESS:
             mqttc.subscribe(set_topic)
+            mqttc.publish(availability_topic, "online", retain=True)
             for k, v in ENTITIES_CONFIG.items():
                 unique_id = serial_num + "_" + k
                 component = v["component"]
@@ -304,6 +306,7 @@ try:
                         "identifiers": serial_num,
                         "name": device_name,
                     },
+                    "availability_topic": availability_topic,
                 }
                 if "setter" in v:
                     config["command_topic"] = "~/set"
@@ -332,6 +335,7 @@ try:
     mqttc.on_connect = _on_connect
     mqttc.on_message = _on_message
     mqttc.username_pw_set(mqtt_username, mqtt_password)
+    mqttc.will_set(availability_topic, "offline", retain=True)
     logger.info("Connecting to MQTT %s %s", mqtt_host, mqtt_port)
     mqttc.connect(mqtt_host, mqtt_port)
 
@@ -364,6 +368,6 @@ try:
         mqttc.loop(timeout=polling_interval_seconds)
 
 finally:
-    mqttc.disconnect()
+    # Intentionally not calling mqttc.disconnect() so that the broker sends the will (offline to the availability_topic)
     connection.close()
     redis_connection.close()
