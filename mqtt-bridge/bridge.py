@@ -140,7 +140,6 @@ ENTITIES_CONFIG = {
             "name": "Charging enable",
             "payload_on": 1,
             "payload_off": 0,
-            "command_topic": "~/set",
             "icon": "mdi:ev-station",
         },
     },
@@ -153,7 +152,6 @@ ENTITIES_CONFIG = {
             "payload_unlock": 0,
             "state_locked": 1,
             "state_unlocked": 0,
-            "command_topic": "~/set",
         },
     },
     "max_charging_current": {
@@ -161,7 +159,6 @@ ENTITIES_CONFIG = {
         "setter": lambda val: sql_execute("UPDATE `wallbox_config` SET `max_charging_current`=%s;", val),
         "config": {
             "name": "Max charging current",
-            "command_topic": "~/set",
             "min": 6,
             "max": 40,
             "unit_of_measurement": "A",
@@ -173,7 +170,6 @@ ENTITIES_CONFIG = {
         "setter": lambda val: sql_execute("UPDATE `wallbox_config` SET `halo_brightness`=%s;", val),
         "config": {
             "name": "Halo Brightness",
-            "command_topic": "~/set",
             "min": 0,
             "max": 100,
             "icon": "mdi:brightness-percent",
@@ -309,6 +305,8 @@ try:
                         "name": device_name,
                     },
                 }
+                if "setter" in v:
+                    config["command_topic"] = "~/set"
                 config = {**v["config"], **config}
                 mqttc.publish(
                     "homeassistant/" + component + "/" + unique_id + "/config",
