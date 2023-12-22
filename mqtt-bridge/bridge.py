@@ -20,7 +20,7 @@ import redis
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("mqtt-bridge")
 
-wallbox_status_codes = [
+WALLBOX_STATUS_CODES = [
     "Ready",
     "Charging",
     "Connected waiting car",
@@ -41,6 +41,33 @@ wallbox_status_codes = [
     "Updating",
     "Queue by eco smart",
 ]
+
+STATE_OVERRIDES = {
+    0xA1: 0,
+    0xA2: 9,
+    0xA3: 14,
+    0xA4: 15,
+    0xA6: 17,
+    0xB1: 3,
+    0xB2: 4,
+    0xB3: 3,
+    0xB4: 2,
+    0xB5: 2,
+    0xB6: 4,
+    0xB7: 8,
+    0xB8: 8,
+    0xB9: 10,
+    0xBA: 10,
+    0xBB: 12,
+    0xBC: 13,
+    0xBD: 18,
+    0xC1: 1,
+    0xC2: 1,
+    0xC3: 11,
+    0xC4: 11,
+    0xD1: 6,
+    0xD2: 6,
+}
 
 connection = pymysql.connect(
     host="localhost",
@@ -126,12 +153,9 @@ def lock_unlock(val):
 def effective_status_string():
     tms_status = int(redis_hget("m2w", "tms.charger_status"))
     state = int(redis_hget("state", "session.state"))
-    # The wallbox app shows locked for longer than the TMS status
-    if state == 210:  # Wait unlock
-        tms_status = 6  # Locked
-    elif state == 186:
-        return "Waiting in queue by Power Boost"
-    return wallbox_status_codes[tms_status]
+    if state in STATE_OVERRIDES:
+        tms_status = STATE_OVERRIDES[state]
+    return WALLBOX_STATUS_CODES[tms_status]
 
 
 ENTITIES_CONFIG = {
