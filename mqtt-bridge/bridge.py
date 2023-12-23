@@ -111,20 +111,24 @@ libc = ctypes.CDLL(None)
 syscall = libc.syscall
 
 
+def send_to_posix_queue(name, msg):
+    mq = syscall(274, name, 0x2, 0x1C7, None)
+    if mq < 0:
+        return
+    syscall(276, mq, msg.ljust(1024, b"\x00"), 1024, 0, None)
+    os.close(mq)
+
+
 def pause_resume(val):
     proposed_state = int(val)
     current_state = sql_execute("SELECT `charging_enable` FROM wallbox_config;")["charging_enable"]
     if proposed_state == current_state:
         return
 
-    mq = syscall(274, b"WALLBOX_MYWALLBOX_WALLBOX_STATEMACHINE", 0x2, 0x1C7, None)
-    if mq < 0:
-        return
     if proposed_state == 1:
-        syscall(276, mq, b"EVENT_REQUEST_USER_ACTION#1.000000".ljust(1024, b"\x00"), 1024, 0, None)
+        send_to_posix_queue(b"WALLBOX_MYWALLBOX_WALLBOX_STATEMACHINE", b"EVENT_REQUEST_USER_ACTION#1.000000")
     elif proposed_state == 0:
-        syscall(276, mq, b"EVENT_REQUEST_USER_ACTION#2.000000".ljust(1024, b"\x00"), 1024, 0, None)
-    os.close(mq)
+        send_to_posix_queue(b"WALLBOX_MYWALLBOX_WALLBOX_STATEMACHINE", b"EVENT_REQUEST_USER_ACTION#2.000000")
 
 
 # Needed for unlock
@@ -139,14 +143,10 @@ def lock_unlock(val):
     if proposed_state == current_state:
         return
 
-    mq = syscall(274, b"WALLBOX_MYWALLBOX_WALLBOX_LOGIN", 0x2, 0x1C7, None)
-    if mq < 0:
-        return
     if proposed_state == 1:
-        syscall(276, mq, b"EVENT_REQUEST_LOCK".ljust(1024, b"\x00"), 1024, 0, None)
+        send_to_posix_queue(b"WALLBOX_MYWALLBOX_WALLBOX_LOGIN", b"EVENT_REQUEST_LOCK")
     elif proposed_state == 0:
-        syscall(276, mq, (b"EVENT_REQUEST_LOGIN#%d.000000" % wallbox_uid).ljust(1024, b"\x00"), 1024, 0, None)
-    os.close(mq)
+        send_to_posix_queue(b"WALLBOX_MYWALLBOX_WALLBOX_LOGIN", (b"EVENT_REQUEST_LOGIN#%d.000000" % wallbox_uid))
 
 
 # Applies some additional rules to the internal state and returns the status as a string
