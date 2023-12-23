@@ -21,27 +21,10 @@ This open-source project connects your Wallbox fully locally to Home Assistant, 
 
 1. [Root your Wallbox](https://github.com/jagheterfredrik/wallbox-pwn)
 2. Setup an MQTT Broker, if you don't already have one. Here's an example [installing it as a Home Assistant add-on](https://www.youtube.com/watch?v=dqTn-Gk4Qeo)
-3. Edit bridge.ini
-   - Set `host` the IP address of your MQTT broker
-   - Set `username` and `password` to match your broker setup
-4. Copy the files in mqtt-bridge to your Wallbox.
-
-   On Windows you can use WinSCP.
-
-   On OS X/Linux this can be done using `scp -r /path/to/wallbox-mqtt-bridge/mqtt-bridge root@<wallbox-ip>:~`
-
-   You should end up with the following files in your Wallbox:
-      - `/home/root/mqtt-bridge/bridge.ini`
-      - `/home/root/mqtt-bridge/bridge.py`
-      - `/home/root/mqtt-bridge/install.sh`
-      - `/home/root/mqtt-bridge/mqtt-bridge.service`
-      - `/home/root/mqtt-bridge/requirements.txt`
-5. `ssh` to your Wallbox and run the installer
+3. `ssh` to your Wallbox and run
 
 ```sh
-cd mqtt-bridge
-chmod +x install.sh
-./install.sh
+curl -sSfL https://github.com/jagheterfredrik/wallbox-mqtt-bridge/releases/download/bridge/install.sh > install.sh && bash install.sh
 ```
 
 ## Acknowledgments
