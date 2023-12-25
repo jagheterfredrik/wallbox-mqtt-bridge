@@ -3,29 +3,10 @@ package bridge
 import (
 	"bufio"
 	"fmt"
-	"io/ioutil"
 	"os"
-	"os/exec"
 	"strconv"
 	"strings"
 )
-
-var service = `[Unit]
-Description=MQTT Bridge
-After=network.target
-Requires=mysqld.service
-StartLimitIntervalSec=0
-
-[Service]
-Type=simple
-Restart=always
-RestartSec=1
-User=root
-ExecStart=/home/root/mqtt-bridge/bridge /home/root/mqtt-bridge/bridge.ini
-
-[Install]
-WantedBy=multi-user.target
-`
 
 func askConfirmOrNew(field *string, name string) {
 	fmt.Printf("%s (%s): ", name, *field)
@@ -57,17 +38,6 @@ func askConfirmOrNewBool(field *bool, name string) {
 	}
 }
 
-func installService() {
-	ioutil.WriteFile("/lib/systemd/system/mqtt-bridge.service", []byte(service), 0644)
-	var cmd *exec.Cmd
-	cmd = exec.Command("systemctl", "daemon-reload")
-	cmd.Run()
-	cmd = exec.Command("systemctl", "enable", "mqtt-bridge")
-	cmd.Run()
-	cmd = exec.Command("systemctl", "restart", "mqtt-bridge")
-	cmd.Run()
-}
-
 func RunTuiSetup() {
 	config := WallboxConfig{}
 	config.MQTT.Host = "127.0.0.1"
@@ -87,6 +57,4 @@ func RunTuiSetup() {
 	askConfirmOrNewBool(&config.Settings.DebugSensors, "Debug sensors")
 
 	config.SaveTo("bridge.ini")
-
-	installService()
 }
