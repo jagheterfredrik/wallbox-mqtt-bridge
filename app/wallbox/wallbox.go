@@ -40,6 +40,7 @@ type Wallbox struct {
 	redisClient *redis.Client
 	sqlClient   *sqlx.DB
 	Data        DataCache
+	ChargerType string `db:"charger_type"`
 }
 
 func New() *Wallbox {
@@ -50,6 +51,9 @@ func New() *Wallbox {
 	if err != nil {
 		panic(err)
 	}
+
+	query := "select SUBSTRING_INDEX(part_number, '-', 1) AS charger_type from charger_info;"
+	w.sqlClient.Get(&w, query)
 
 	w.redisClient = redis.NewClient(&redis.Options{
 		Addr:     "localhost:6379",
@@ -144,7 +148,9 @@ func (w *Wallbox) SetLocked(lock int) {
 	if lock == w.Data.SQL.Lock {
 		return
 	}
-	if lock == 1 {
+	if w.ChargerType == "CPB1" {
+		w.sqlClient.MustExec("UPDATE `wallbox_config` SET `lock`=?", lock)
+	} else if lock == 1 {
 		sendToPosixQueue("WALLBOX_MYWALLBOX_WALLBOX_LOGIN", "EVENT_REQUEST_LOCK")
 	} else {
 		userId := w.UserId()
