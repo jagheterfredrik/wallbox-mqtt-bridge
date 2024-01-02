@@ -80,7 +80,7 @@ func getEntities(w *wallbox.Wallbox) map[string]Entity {
 				"name":                        "Charging power",
 				"device_class":                "power",
 				"unit_of_measurement":         "W",
-				"state_class":                 "total",
+				"state_class":                 "measurement",
 				"suggested_display_precision": "1",
 			},
 		},
