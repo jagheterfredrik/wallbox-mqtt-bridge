@@ -84,6 +84,84 @@ func getEntities(w *wallbox.Wallbox) map[string]Entity {
 				"suggested_display_precision": "1",
 			},
 		},
+		"charging_power_l1": {
+			Component: "sensor",
+			Getter: func() string {
+				return fmt.Sprint(w.Data.RedisM2W.Line1Power)
+			},
+			Config: map[string]string{
+				"name":                        "Charging power L1",
+				"device_class":                "power",
+				"unit_of_measurement":         "W",
+				"state_class":                 "measurement",
+				"suggested_display_precision": "1",
+			},
+		},
+		"charging_power_l2": {
+			Component: "sensor",
+			Getter: func() string {
+				return fmt.Sprint(w.Data.RedisM2W.Line2Power)
+			},
+			Config: map[string]string{
+				"name":                        "Charging power L2",
+				"device_class":                "power",
+				"unit_of_measurement":         "W",
+				"state_class":                 "measurement",
+				"suggested_display_precision": "1",
+			},
+		},
+		"charging_power_l3": {
+			Component: "sensor",
+			Getter: func() string {
+				return fmt.Sprint(w.Data.RedisM2W.Line3Power)
+			},
+			Config: map[string]string{
+				"name":                        "Charging power L3",
+				"device_class":                "power",
+				"unit_of_measurement":         "W",
+				"state_class":                 "measurement",
+				"suggested_display_precision": "1",
+			},
+		},
+		"charging_current_l1": {
+			Component: "sensor",
+			Getter: func() string {
+				return fmt.Sprint(w.Data.RedisM2W.Line1Current)
+			},
+			Config: map[string]string{
+				"name":                        "Charging current L1",
+				"device_class":                "current",
+				"unit_of_measurement":         "A",
+				"state_class":                 "measurement",
+				"suggested_display_precision": "1",
+			},
+		},
+		"charging_current_l2": {
+			Component: "sensor",
+			Getter: func() string {
+				return fmt.Sprint(w.Data.RedisM2W.Line2Current)
+			},
+			Config: map[string]string{
+				"name":                        "Charging current L2",
+				"device_class":                "current",
+				"unit_of_measurement":         "A",
+				"state_class":                 "measurement",
+				"suggested_display_precision": "1",
+			},
+		},
+		"charging_current_l3": {
+			Component: "sensor",
+			Getter: func() string {
+				return fmt.Sprint(w.Data.RedisM2W.Line3Current)
+			},
+			Config: map[string]string{
+				"name":                        "Charging current L3",
+				"device_class":                "current",
+				"unit_of_measurement":         "A",
+				"state_class":                 "measurement",
+				"suggested_display_precision": "1",
+			},
+		},
 		"cumulative_added_energy": {
 			Component: "sensor",
 			Getter:    func() string { return fmt.Sprint(w.Data.SQL.CumulativeAddedEnergy) },

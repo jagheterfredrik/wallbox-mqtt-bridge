@@ -33,6 +33,9 @@ type DataCache struct {
 		Line1Power    float64 `redis:"tms.line1.power_watt.value"`
 		Line2Power    float64 `redis:"tms.line2.power_watt.value"`
 		Line3Power    float64 `redis:"tms.line3.power_watt.value"`
+		Line1Current  float64 `redis:"tms.line1.current_amp.value"`
+		Line2Current  float64 `redis:"tms.line2.current_amp.value"`
+		Line3Current  float64 `redis:"tms.line3.current_amp.value"`
 	}
 }
 
