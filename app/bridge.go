@@ -9,7 +9,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/eclipse/paho.mqtt.golang"
+	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/jagheterfredrik/wallbox-mqtt-bridge/app/ratelimit"
 	"github.com/jagheterfredrik/wallbox-mqtt-bridge/app/wallbox"
 )
@@ -89,8 +89,14 @@ func LaunchBridge(configPath string) {
 
 	published := make(map[string]interface{})
 	rateLimiter := map[string]*ratelimit.DeltaRateLimit{
-		"charging_power": ratelimit.NewDeltaRateLimit(10, 100),
-		"added_energy":   ratelimit.NewDeltaRateLimit(10, 50),
+		"charging_power":      ratelimit.NewDeltaRateLimit(10, 100),
+		"charging_power_l1":   ratelimit.NewDeltaRateLimit(10, 100),
+		"charging_power_l2":   ratelimit.NewDeltaRateLimit(10, 100),
+		"charging_power_l3":   ratelimit.NewDeltaRateLimit(10, 100),
+		"charging_current_l1": ratelimit.NewDeltaRateLimit(10, 0.2),
+		"charging_current_l2": ratelimit.NewDeltaRateLimit(10, 0.2),
+		"charging_current_l3": ratelimit.NewDeltaRateLimit(10, 0.2),
+		"added_energy":        ratelimit.NewDeltaRateLimit(10, 50),
 	}
 
 	for {
