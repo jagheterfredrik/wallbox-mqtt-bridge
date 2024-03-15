@@ -29,13 +29,20 @@ type DataCache struct {
 	}
 
 	RedisM2W struct {
-		ChargerStatus int     `redis:"tms.charger_status"`
-		Line1Power    float64 `redis:"tms.line1.power_watt.value"`
-		Line2Power    float64 `redis:"tms.line2.power_watt.value"`
-		Line3Power    float64 `redis:"tms.line3.power_watt.value"`
-		Line1Current  float64 `redis:"tms.line1.current_amp.value"`
-		Line2Current  float64 `redis:"tms.line2.current_amp.value"`
-		Line3Current  float64 `redis:"tms.line3.current_amp.value"`
+		ChargerStatus              int     `redis:"tms.charger_status"`
+		Line1Power                 float64 `redis:"tms.line1.power_watt.value"`
+		Line2Power                 float64 `redis:"tms.line2.power_watt.value"`
+		Line3Power                 float64 `redis:"tms.line3.power_watt.value"`
+		Line1Current               float64 `redis:"tms.line1.current_amp.value"`
+		Line2Current               float64 `redis:"tms.line2.current_amp.value"`
+		Line3Current               float64 `redis:"tms.line3.current_amp.value"`
+		PowerBoostLine1Power       float64 `redis:"PBO.line1.power.value"`
+		PowerBoostLine2Power       float64 `redis:"PBO.line2.power.value"`
+		PowerBoostLine3Power       float64 `redis:"PBO.line3.power.value"`
+		PowerBoostLine1Current     float64 `redis:"PBO.line1.current.value"`
+		PowerBoostLine2Current     float64 `redis:"PBO.line2.current.value"`
+		PowerBoostLine3Current     float64 `redis:"PBO.line3.current.value"`
+		PowerBoostCumulativeEnergy float64 `redis:"PBO.energy_wh.value"`
 	}
 }
 
