@@ -18,7 +18,7 @@ var connectLostHandler mqtt.ConnectionLostHandler = func(client mqtt.Client, err
 	panic("Connection to MQTT lost")
 }
 
-func LaunchBridge(configPath string) {
+func RunBridge(configPath string) {
 	c := LoadConfig(configPath)
 	w := wallbox.New()
 	w.RefreshData()
@@ -99,6 +99,9 @@ func LaunchBridge(configPath string) {
 		"added_energy":        ratelimit.NewDeltaRateLimit(10, 50),
 	}
 
+	interrupt := make(chan os.Signal, 1)
+	signal.Notify(interrupt, os.Interrupt, syscall.SIGTERM)
+
 	for {
 		select {
 		case <-ticker.C:
@@ -116,18 +119,12 @@ func LaunchBridge(configPath string) {
 					published[key] = payload
 				}
 			}
-		case <-interrupt():
+		case <-interrupt:
 			fmt.Println("Interrupted. Exiting...")
 			token := client.Publish(availabilityTopic, 1, true, "offline")
 			token.Wait()
 			client.Disconnect(250)
-			os.Exit(0)
+			return
 		}
 	}
-}
-
-func interrupt() <-chan os.Signal {
-	interrupt := make(chan os.Signal, 1)
-	signal.Notify(interrupt, os.Interrupt, syscall.SIGTERM)
-	return interrupt
 }
