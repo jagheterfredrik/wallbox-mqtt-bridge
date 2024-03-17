@@ -10,7 +10,6 @@ import (
 	"time"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
-	"github.com/jagheterfredrik/wallbox-mqtt-bridge/app/ratelimit"
 	"github.com/jagheterfredrik/wallbox-mqtt-bridge/app/wallbox"
 )
 
@@ -94,22 +93,6 @@ func RunBridge(configPath string) {
 	defer ticker.Stop()
 
 	published := make(map[string]interface{})
-	rateLimiter := map[string]*ratelimit.DeltaRateLimit{
-		"charging_power":         ratelimit.NewDeltaRateLimit(10, 100),
-		"charging_power_l1":      ratelimit.NewDeltaRateLimit(10, 100),
-		"charging_power_l2":      ratelimit.NewDeltaRateLimit(10, 100),
-		"charging_power_l3":      ratelimit.NewDeltaRateLimit(10, 100),
-		"charging_current_l1":    ratelimit.NewDeltaRateLimit(10, 0.2),
-		"charging_current_l2":    ratelimit.NewDeltaRateLimit(10, 0.2),
-		"charging_current_l3":    ratelimit.NewDeltaRateLimit(10, 0.2),
-		"power_boost_power_l1":   ratelimit.NewDeltaRateLimit(10, 100),
-		"power_boost_power_l2":   ratelimit.NewDeltaRateLimit(10, 100),
-		"power_boost_power_l3":   ratelimit.NewDeltaRateLimit(10, 100),
-		"power_boost_current_l1": ratelimit.NewDeltaRateLimit(10, 0.2),
-		"power_boost_current_l2": ratelimit.NewDeltaRateLimit(10, 0.2),
-		"power_boost_current_l3": ratelimit.NewDeltaRateLimit(10, 0.2),
-		"added_energy":           ratelimit.NewDeltaRateLimit(10, 50),
-	}
 
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt, syscall.SIGTERM)
@@ -122,7 +105,7 @@ func RunBridge(configPath string) {
 				payload := val.Getter()
 				bytePayload := []byte(fmt.Sprint(payload))
 				if published[key] != payload {
-					if rate, ok := rateLimiter[key]; ok && !rate.Allow(strToFloat(payload)) {
+					if val.RateLimit != nil && !val.RateLimit.Allow(strToFloat(payload)) {
 						continue
 					}
 					fmt.Println("Publishing: ", key, payload)
