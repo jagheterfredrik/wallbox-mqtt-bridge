@@ -1,8 +1,9 @@
 package main
 
 import (
-	"github.com/jagheterfredrik/wallbox-mqtt-bridge/app"
 	"os"
+
+	bridge "github.com/jagheterfredrik/wallbox-mqtt-bridge/app"
 )
 
 func main() {
@@ -12,8 +13,7 @@ func main() {
 	firstArgument := os.Args[1]
 	if firstArgument == "--config" {
 		bridge.RunTuiSetup()
-		os.Exit(0)
 	} else {
-		bridge.LaunchBridge(firstArgument)
+		bridge.RunBridge(firstArgument)
 	}
 }
