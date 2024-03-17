@@ -162,6 +162,69 @@ func getEntities(w *wallbox.Wallbox) map[string]Entity {
 				"suggested_display_precision": "1",
 			},
 		},
+		"cumulative_added_energy": {
+			Component: "sensor",
+			Getter:    func() string { return fmt.Sprint(w.Data.SQL.CumulativeAddedEnergy) },
+			Config: map[string]string{
+				"name":                        "Cumulative added energy",
+				"device_class":                "energy",
+				"unit_of_measurement":         "Wh",
+				"state_class":                 "total_increasing",
+				"suggested_display_precision": "1",
+			},
+		},
+		"halo_brightness": {
+			Component: "number",
+			Setter:    func(val string) { w.SetHaloBrightness(strToInt(val)) },
+			Getter:    func() string { return strconv.Itoa(w.Data.SQL.HaloBrightness) },
+			Config: map[string]string{
+				"name":                "Halo Brightness",
+				"command_topic":       "~/set",
+				"min":                 "0",
+				"max":                 "100",
+				"icon":                "mdi:brightness-percent",
+				"unit_of_measurement": "%",
+				"entity_category":     "config",
+			},
+		},
+		"lock": {
+			Component: "lock",
+			Setter:    func(val string) { w.SetLocked(strToInt(val)) },
+			Getter:    func() string { return strconv.Itoa(w.Data.SQL.Lock) },
+			Config: map[string]string{
+				"name":           "Lock",
+				"payload_lock":   "1",
+				"payload_unlock": "0",
+				"state_locked":   "1",
+				"state_unlocked": "0",
+				"command_topic":  "~/set",
+			},
+		},
+		"max_charging_current": {
+			Component: "number",
+			Setter:    func(val string) { w.SetMaxChargingCurrent(strToInt(val)) },
+			Getter:    func() string { return strconv.Itoa(w.Data.SQL.MaxChargingCurrent) },
+			Config: map[string]string{
+				"name":                "Max charging current",
+				"command_topic":       "~/set",
+				"min":                 "6",
+				"max":                 strconv.Itoa(w.AvailableCurrent()),
+				"unit_of_measurement": "A",
+				"device_class":        "current",
+			},
+		},
+		"status": {
+			Component: "sensor",
+			Getter:    w.EffectiveStatus,
+			Config: map[string]string{
+				"name": "Status",
+			},
+		},
+	}
+}
+
+func getPowerBoostEntities(w *wallbox.Wallbox, c *WallboxConfig) map[string]Entity {
+	return map[string]Entity{
 		"power_boost_power_l1": {
 			Component: "sensor",
 			Getter: func() string {
@@ -249,64 +312,6 @@ func getEntities(w *wallbox.Wallbox) map[string]Entity {
 				"unit_of_measurement":         "Wh",
 				"state_class":                 "total_increasing",
 				"suggested_display_precision": "1",
-			},
-		},
-		"cumulative_added_energy": {
-			Component: "sensor",
-			Getter:    func() string { return fmt.Sprint(w.Data.SQL.CumulativeAddedEnergy) },
-			Config: map[string]string{
-				"name":                        "Cumulative added energy",
-				"device_class":                "energy",
-				"unit_of_measurement":         "Wh",
-				"state_class":                 "total_increasing",
-				"suggested_display_precision": "1",
-			},
-		},
-		"halo_brightness": {
-			Component: "number",
-			Setter:    func(val string) { w.SetHaloBrightness(strToInt(val)) },
-			Getter:    func() string { return strconv.Itoa(w.Data.SQL.HaloBrightness) },
-			Config: map[string]string{
-				"name":                "Halo Brightness",
-				"command_topic":       "~/set",
-				"min":                 "0",
-				"max":                 "100",
-				"icon":                "mdi:brightness-percent",
-				"unit_of_measurement": "%",
-				"entity_category":     "config",
-			},
-		},
-		"lock": {
-			Component: "lock",
-			Setter:    func(val string) { w.SetLocked(strToInt(val)) },
-			Getter:    func() string { return strconv.Itoa(w.Data.SQL.Lock) },
-			Config: map[string]string{
-				"name":           "Lock",
-				"payload_lock":   "1",
-				"payload_unlock": "0",
-				"state_locked":   "1",
-				"state_unlocked": "0",
-				"command_topic":  "~/set",
-			},
-		},
-		"max_charging_current": {
-			Component: "number",
-			Setter:    func(val string) { w.SetMaxChargingCurrent(strToInt(val)) },
-			Getter:    func() string { return strconv.Itoa(w.Data.SQL.MaxChargingCurrent) },
-			Config: map[string]string{
-				"name":                "Max charging current",
-				"command_topic":       "~/set",
-				"min":                 "6",
-				"max":                 strconv.Itoa(w.AvailableCurrent()),
-				"unit_of_measurement": "A",
-				"device_class":        "current",
-			},
-		},
-		"status": {
-			Component: "sensor",
-			Getter:    w.EffectiveStatus,
-			Config: map[string]string{
-				"name": "Status",
 			},
 		},
 	}

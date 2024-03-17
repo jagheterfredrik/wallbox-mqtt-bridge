@@ -31,6 +31,12 @@ func LaunchBridge(configPath string) {
 		}
 	}
 
+	if c.Settings.PowerBoostEnabled {
+		for k, v := range getPowerBoostEntities(w, c) {
+			entityConfig[k] = v
+		}
+	}
+
 	topicPrefix := "wallbox_" + serialNumber
 	availabilityTopic := topicPrefix + "/availability"
 

@@ -16,6 +16,7 @@ type WallboxConfig struct {
 		PollingIntervalSeconds int    `ini:"polling_interval_seconds"`
 		DeviceName             string `ini:"device_name"`
 		DebugSensors           bool   `ini:"debug_sensors"`
+		PowerBoostEnabled      bool   `ini:"power_boost_enabled"`
 	} `ini:"settings"`
 }
 
