@@ -223,6 +223,100 @@ func getEntities(w *wallbox.Wallbox) map[string]Entity {
 	}
 }
 
+func getPowerBoostEntities(w *wallbox.Wallbox, c *WallboxConfig) map[string]Entity {
+	return map[string]Entity{
+		"power_boost_power_l1": {
+			Component: "sensor",
+			Getter: func() string {
+				return fmt.Sprint(w.Data.RedisM2W.PowerBoostLine1Power)
+			},
+			Config: map[string]string{
+				"name":                        "Power Boost L1",
+				"device_class":                "power",
+				"unit_of_measurement":         "W",
+				"state_class":                 "measurement",
+				"suggested_display_precision": "1",
+			},
+		},
+		"power_boost_power_l2": {
+			Component: "sensor",
+			Getter: func() string {
+				return fmt.Sprint(w.Data.RedisM2W.PowerBoostLine2Power)
+			},
+			Config: map[string]string{
+				"name":                        "Power Boost L2",
+				"device_class":                "power",
+				"unit_of_measurement":         "W",
+				"state_class":                 "measurement",
+				"suggested_display_precision": "1",
+			},
+		},
+		"power_boost_power_l3": {
+			Component: "sensor",
+			Getter: func() string {
+				return fmt.Sprint(w.Data.RedisM2W.PowerBoostLine3Power)
+			},
+			Config: map[string]string{
+				"name":                        "Power Boost L3",
+				"device_class":                "power",
+				"unit_of_measurement":         "W",
+				"state_class":                 "measurement",
+				"suggested_display_precision": "1",
+			},
+		},
+		"power_boost_current_l1": {
+			Component: "sensor",
+			Getter: func() string {
+				return fmt.Sprint(w.Data.RedisM2W.PowerBoostLine1Current)
+			},
+			Config: map[string]string{
+				"name":                        "Power Boost current L1",
+				"device_class":                "current",
+				"unit_of_measurement":         "A",
+				"state_class":                 "measurement",
+				"suggested_display_precision": "1",
+			},
+		},
+		"power_boost_current_l2": {
+			Component: "sensor",
+			Getter: func() string {
+				return fmt.Sprint(w.Data.RedisM2W.PowerBoostLine2Current)
+			},
+			Config: map[string]string{
+				"name":                        "Power Boost current L2",
+				"device_class":                "current",
+				"unit_of_measurement":         "A",
+				"state_class":                 "measurement",
+				"suggested_display_precision": "1",
+			},
+		},
+		"power_boost_current_l3": {
+			Component: "sensor",
+			Getter: func() string {
+				return fmt.Sprint(w.Data.RedisM2W.PowerBoostLine3Current)
+			},
+			Config: map[string]string{
+				"name":                        "Power Boost current L3",
+				"device_class":                "current",
+				"unit_of_measurement":         "A",
+				"state_class":                 "measurement",
+				"suggested_display_precision": "1",
+			},
+		},
+		"power_boost_cumulative_added_energy": {
+			Component: "sensor",
+			Getter:    func() string { return fmt.Sprint(w.Data.RedisM2W.PowerBoostCumulativeEnergy) },
+			Config: map[string]string{
+				"name":                        "Power Boost Cumulative added energy",
+				"device_class":                "energy",
+				"unit_of_measurement":         "Wh",
+				"state_class":                 "total_increasing",
+				"suggested_display_precision": "1",
+			},
+		},
+	}
+}
+
 func getDebugEntities(w *wallbox.Wallbox) map[string]Entity {
 	return map[string]Entity{
 		"control_pilot": {
