@@ -230,6 +230,39 @@ func getEntities(w *wallbox.Wallbox) map[string]Entity {
 				"name": "Status",
 			},
 		},
+		"temp_l1": {
+		    Component: "sensor",
+		    Getter:    func() string { return fmt.Sprint(w.Data.RedisM2W.TempL1) },
+		    Config: map[string]string{
+			"name":                 "Temperature Line 1",
+			"unit_of_measurement":  "°C",
+			"device_class":         "temperature",
+			"state_class":          "measurement",
+			"suggested_display_precision": "1",
+		    },
+		},
+		"temp_l2": {
+		    Component: "sensor",
+		    Getter:    func() string { return fmt.Sprint(w.Data.RedisM2W.TempL2) },
+		    Config: map[string]string{
+			"name":                 "Temperature Line 2",
+			"unit_of_measurement":  "°C",
+			"device_class":         "temperature",
+			"state_class":          "measurement",
+			"suggested_display_precision": "1",
+		    },
+		},
+		"temp_l3": {
+		    Component: "sensor",
+		    Getter:    func() string { return fmt.Sprint(w.Data.RedisM2W.TempL3) },
+		    Config: map[string]string{
+			"name":                 "Temperature Line 3",
+			"unit_of_measurement":  "°C",
+			"device_class":         "temperature",
+			"state_class":          "measurement",
+			"suggested_display_precision": "1",
+		    },
+		},		
 	}
 }
 
