@@ -43,6 +43,9 @@ type DataCache struct {
 		PowerBoostLine2Current     float64 `redis:"PBO.line2.current.value"`
 		PowerBoostLine3Current     float64 `redis:"PBO.line3.current.value"`
 		PowerBoostCumulativeEnergy float64 `redis:"PBO.energy_wh.value"`
+        	TempL1                     float64 `redis:"tms.line1.temp_deg.value"`
+        	TempL2                     float64 `redis:"tms.line2.temp_deg.value"`
+        	TempL3                     float64 `redis:"tms.line3.temp_deg.value"`
 	}
 }
 
