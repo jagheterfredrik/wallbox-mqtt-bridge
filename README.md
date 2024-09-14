@@ -2,6 +2,8 @@
 
 This open-source project connects your Wallbox fully locally to Home Assistant, providing you with unparalleled speed and reliability.
 
+Note: Doesn't work with firmware v6.6.x see issue https://github.com/jagheterfredrik/wallbox-mqtt-bridge/issues/63
+
 ## Features
 
 - **Instant Sensor Data:** The Wallbox's internal state is polled every second and any updates are immediately pushed to the external MQTT broker.
