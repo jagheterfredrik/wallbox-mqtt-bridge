@@ -13,10 +13,13 @@ type WallboxConfig struct {
 	} `ini:"mqtt"`
 
 	Settings struct {
-		PollingIntervalSeconds int    `ini:"polling_interval_seconds"`
-		DeviceName             string `ini:"device_name"`
-		DebugSensors           bool   `ini:"debug_sensors"`
-		PowerBoostEnabled      bool   `ini:"power_boost_enabled"`
+		PollingIntervalSeconds       int      `ini:"polling_interval_seconds"`
+		DeviceName                   string   `ini:"device_name"`
+		DebugSensors                 bool     `ini:"debug_sensors"`
+		PowerBoostEnabled            bool     `ini:"power_boost_enabled"`
+		IntervalUpdatedTopics        []string `ini:"interval_updated_topics"`
+		IntervalUpdatedTopicsSeconds int      `ini:"interval_updated_topics_seconds"`
+		VerboseOutput                bool     `ini:"verbose_output"`
 	} `ini:"settings"`
 }
 

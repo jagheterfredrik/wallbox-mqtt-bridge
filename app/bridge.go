@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"slices"
 	"strings"
 	"syscall"
 	"time"
@@ -93,6 +94,7 @@ func RunBridge(configPath string) {
 	defer ticker.Stop()
 
 	published := make(map[string]interface{})
+	lastUpdateIntervalUpdatedTopics := make(map[string]time.Time)
 
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt, syscall.SIGTERM)
@@ -104,14 +106,25 @@ func RunBridge(configPath string) {
 			for key, val := range entityConfig {
 				payload := val.Getter()
 				bytePayload := []byte(fmt.Sprint(payload))
-				if published[key] != payload {
+				isIntervalUpdatedTopic := slices.Index(c.Settings.IntervalUpdatedTopics, key) > -1
+				lastUpdateTimeForTopic := lastUpdateIntervalUpdatedTopics[key]
+				isUpdateForTopicNecessary := isUpdateForTopicNecessary(lastUpdateTimeForTopic, c)
+				if c.Settings.VerboseOutput {
+					fmt.Printf("Check if publishing of '%s' is necessary. (isIntervalUpdatedTopic: '%t', isUpdateForTopicNecessary: '%t', lastUpdateTimeForTopic: '%s')\n",
+						key, isIntervalUpdatedTopic, isUpdateForTopicNecessary, lastUpdateTimeForTopic.String())
+				}
+				if isIntervalUpdatedTopic && isUpdateForTopicNecessary || published[key] != payload {
 					if val.RateLimit != nil && !val.RateLimit.Allow(strToFloat(payload)) {
+						if c.Settings.VerboseOutput {
+							fmt.Printf("Rate limit exceed for key '%s' and payload '%s'\n", key, payload)
+						}
 						continue
 					}
 					fmt.Println("Publishing: ", key, payload)
 					token := client.Publish(topicPrefix+"/"+key+"/state", 1, true, bytePayload)
 					token.Wait()
 					published[key] = payload
+					lastUpdateIntervalUpdatedTopics[key] = time.Now()
 				}
 			}
 		case <-interrupt:
@@ -122,4 +135,12 @@ func RunBridge(configPath string) {
 			return
 		}
 	}
+}
+
+func isUpdateForTopicNecessary(lastUpdateTimeForTopic time.Time, config *WallboxConfig) bool {
+	if lastUpdateTimeForTopic.IsZero() {
+		return true
+	}
+	lastUpdatedBeforeForTopic := time.Since(lastUpdateTimeForTopic)
+	return int(lastUpdatedBeforeForTopic.Seconds()) > (*config).Settings.IntervalUpdatedTopicsSeconds
 }

@@ -10,3 +10,6 @@ bridge-arm64
 
 # Go workspace file
 go.work
+
+bridge.ini
+launch.json
