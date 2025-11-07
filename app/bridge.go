@@ -40,7 +40,11 @@ func RunBridge(configPath string) {
 	availabilityTopic := topicPrefix + "/availability"
 
 	opts := mqtt.NewClientOptions()
-	opts.AddBroker(fmt.Sprintf("tcp://%s:%d", c.MQTT.Host, c.MQTT.Port))
+	brokerURL := c.MQTT.URL
+	if brokerURL == "" {
+		brokerURL = fmt.Sprintf("tcp://%s:%d", c.MQTT.Host, c.MQTT.Port)
+	}
+	opts.AddBroker(brokerURL)
 	opts.SetUsername(c.MQTT.Username)
 	opts.SetPassword(c.MQTT.Password)
 	opts.SetWill(availabilityTopic, "offline", 1, true)

@@ -6,6 +6,7 @@ import (
 
 type WallboxConfig struct {
 	MQTT struct {
+		URL      string `ini:"url"`
 		Host     string `ini:"host"`
 		Port     int    `ini:"port"`
 		Username string `ini:"username"`
