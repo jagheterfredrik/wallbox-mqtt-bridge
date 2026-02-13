@@ -221,6 +221,7 @@ func getEntities(w *wallbox.Wallbox) map[string]Entity {
 				"max":                 fmt.Sprint(w.AvailableCurrent()),
 				"unit_of_measurement": "A",
 				"device_class":        "current",
+				"entity_category":     "config",
 			},
 		},
 		"status": {
@@ -231,38 +232,41 @@ func getEntities(w *wallbox.Wallbox) map[string]Entity {
 			},
 		},
 		"temp_l1": {
-		    Component: "sensor",
-		    Getter:    func() string { return fmt.Sprint(w.Data.RedisM2W.TempL1) },
-		    Config: map[string]string{
-			"name":                 "Temperature Line 1",
-			"unit_of_measurement":  "°C",
-			"device_class":         "temperature",
-			"state_class":          "measurement",
-			"suggested_display_precision": "1",
-		    },
+			Component: "sensor",
+			Getter:    func() string { return fmt.Sprint(w.Data.RedisM2W.TempL1) },
+			Config: map[string]string{
+				"name":                        "Temperature Line 1",
+				"unit_of_measurement":         "°C",
+				"device_class":                "temperature",
+				"state_class":                 "measurement",
+				"suggested_display_precision": "1",
+				"entity_category":             "diagnostic",
+			},
 		},
 		"temp_l2": {
-		    Component: "sensor",
-		    Getter:    func() string { return fmt.Sprint(w.Data.RedisM2W.TempL2) },
-		    Config: map[string]string{
-			"name":                 "Temperature Line 2",
-			"unit_of_measurement":  "°C",
-			"device_class":         "temperature",
-			"state_class":          "measurement",
-			"suggested_display_precision": "1",
-		    },
+			Component: "sensor",
+			Getter:    func() string { return fmt.Sprint(w.Data.RedisM2W.TempL2) },
+			Config: map[string]string{
+				"name":                        "Temperature Line 2",
+				"unit_of_measurement":         "°C",
+				"device_class":                "temperature",
+				"state_class":                 "measurement",
+				"suggested_display_precision": "1",
+				"entity_category":             "diagnostic",
+			},
 		},
 		"temp_l3": {
-		    Component: "sensor",
-		    Getter:    func() string { return fmt.Sprint(w.Data.RedisM2W.TempL3) },
-		    Config: map[string]string{
-			"name":                 "Temperature Line 3",
-			"unit_of_measurement":  "°C",
-			"device_class":         "temperature",
-			"state_class":          "measurement",
-			"suggested_display_precision": "1",
-		    },
-		},		
+			Component: "sensor",
+			Getter:    func() string { return fmt.Sprint(w.Data.RedisM2W.TempL3) },
+			Config: map[string]string{
+				"name":                        "Temperature Line 3",
+				"unit_of_measurement":         "°C",
+				"device_class":                "temperature",
+				"state_class":                 "measurement",
+				"suggested_display_precision": "1",
+				"entity_category":             "diagnostic",
+			},
+		},
 	}
 }
 
@@ -372,28 +376,32 @@ func getDebugEntities(w *wallbox.Wallbox) map[string]Entity {
 			Component: "sensor",
 			Getter:    w.ControlPilotStatus,
 			Config: map[string]string{
-				"name": "Control pilot",
+				"name":            "Control pilot",
+				"entity_category": "diagnostic",
 			},
 		},
 		"m2w_status": {
 			Component: "sensor",
 			Getter:    func() string { return fmt.Sprint(w.Data.RedisM2W.ChargerStatus) },
 			Config: map[string]string{
-				"name": "M2W Status",
+				"name":            "M2W Status",
+				"entity_category": "diagnostic",
 			},
 		},
 		"state_machine_state": {
 			Component: "sensor",
 			Getter:    w.StateMachineState,
 			Config: map[string]string{
-				"name": "State machine",
+				"name":            "State machine",
+				"entity_category": "diagnostic",
 			},
 		},
 		"s2_open": {
 			Component: "sensor",
 			Getter:    func() string { return fmt.Sprint(w.Data.RedisState.S2open) },
 			Config: map[string]string{
-				"name": "S2 open",
+				"name":            "S2 open",
+				"entity_category": "diagnostic",
 			},
 		},
 	}
