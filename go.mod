@@ -1,13 +1,13 @@
 module github.com/jagheterfredrik/wallbox-mqtt-bridge
 
-go 1.19
+go 1.24.0
 
 require (
-	github.com/eclipse/paho.mqtt.golang v1.5.0
-	github.com/go-sql-driver/mysql v1.8.1
+	github.com/eclipse/paho.mqtt.golang v1.5.1
+	github.com/go-sql-driver/mysql v1.9.3
 	github.com/jmoiron/sqlx v1.4.0
-	github.com/redis/go-redis/v9 v9.6.1
-	gopkg.in/ini.v1 v1.67.0
+	github.com/redis/go-redis/v9 v9.18.0
+	gopkg.in/ini.v1 v1.67.1
 )
 
 require (
@@ -15,7 +15,7 @@ require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect
-	github.com/stretchr/testify v1.9.0 // indirect
-	golang.org/x/net v0.27.0 // indirect
-	golang.org/x/sync v0.7.0 // indirect
+	go.uber.org/atomic v1.11.0 // indirect
+	golang.org/x/net v0.50.0 // indirect
+	golang.org/x/sync v0.19.0 // indirect
 )
