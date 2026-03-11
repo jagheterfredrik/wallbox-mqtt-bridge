@@ -31,7 +31,7 @@ func RunBridge(configPath string) {
 	}
 
 	if c.Settings.PowerBoostEnabled {
-		for k, v := range getPowerBoostEntities(w, c) {
+		for k, v := range getPowerBoostEntities(w) {
 			entityConfig[k] = v
 		}
 	}
