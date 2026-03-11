@@ -270,7 +270,7 @@ func getEntities(w *wallbox.Wallbox) map[string]Entity {
 	}
 }
 
-func getPowerBoostEntities(w *wallbox.Wallbox, c *WallboxConfig) map[string]Entity {
+func getPowerBoostEntities(w *wallbox.Wallbox) map[string]Entity {
 	return map[string]Entity{
 		"power_boost_power_l1": {
 			Component: "sensor",
