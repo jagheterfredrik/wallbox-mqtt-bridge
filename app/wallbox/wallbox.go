@@ -54,6 +54,7 @@ type Wallbox struct {
 	sqlClient   *sqlx.DB
 	Data        DataCache
 	ChargerType string `db:"charger_type"`
+	PartNum     string `db:"part_number"`
 }
 
 func New() *Wallbox {
@@ -65,7 +66,7 @@ func New() *Wallbox {
 		panic(err)
 	}
 
-	query := "select SUBSTRING_INDEX(part_number, '-', 1) AS charger_type from charger_info;"
+	query := "select SUBSTRING_INDEX(part_number, '-', 1) AS charger_type, part_number from charger_info;"
 	w.sqlClient.Get(&w, query)
 
 	w.redisClient = redis.NewClient(&redis.Options{
@@ -131,6 +132,19 @@ func (w *Wallbox) SerialNumber() string {
 	var serialNumber string
 	w.sqlClient.Get(&serialNumber, "SELECT `serial_num` FROM charger_info")
 	return serialNumber
+}
+
+func (w *Wallbox) FirmwareVersion() string {
+	var firmware string
+	err := w.sqlClient.Get(&firmware, "SELECT `software_version` FROM `charger_info` LIMIT 1")
+	if err == nil && firmware != "" {
+		return firmware
+	}
+	return "unknown"
+}
+
+func (w *Wallbox) PartNumber() string {
+	return w.PartNum
 }
 
 func (w *Wallbox) UserId() string {

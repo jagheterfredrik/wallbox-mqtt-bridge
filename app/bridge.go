@@ -23,6 +23,9 @@ func RunBridge(configPath string) {
 	w.RefreshData()
 
 	serialNumber := w.SerialNumber()
+	firmwareVersion := w.FirmwareVersion()
+	partNumber := w.PartNumber()
+
 	entityConfig := getEntities(w)
 	if c.Settings.DebugSensors {
 		for k, v := range getDebugEntities(w) {
@@ -64,8 +67,11 @@ func RunBridge(configPath string) {
 			"state_topic":        "~/state",
 			"unique_id":          uid,
 			"device": map[string]string{
-				"identifiers": serialNumber,
-				"name":        c.Settings.DeviceName,
+				"identifiers":  serialNumber,
+				"name":         c.Settings.DeviceName,
+				"model":        partNumber,
+				"manufacturer": "Wallbox",
+				"sw_version":   firmwareVersion,
 			},
 		}
 		if val.Setter != nil {
