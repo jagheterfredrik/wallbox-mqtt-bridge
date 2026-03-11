@@ -107,7 +107,7 @@ func RunBridge(configPath string) {
 			w.RefreshData()
 			for key, val := range entityConfig {
 				payload := val.Getter()
-				bytePayload := []byte(fmt.Sprint(payload))
+				bytePayload := []byte(payload)
 				if published[key] != payload {
 					if val.RateLimit != nil && !val.RateLimit.Allow(strToFloat(payload)) {
 						continue
