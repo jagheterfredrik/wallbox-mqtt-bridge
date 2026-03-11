@@ -229,6 +229,7 @@ func getEntities(w *wallbox.Wallbox) map[string]Entity {
 			Getter:    w.EffectiveStatus,
 			Config: map[string]string{
 				"name": "Status",
+				"icon": "mdi:information-outline",
 			},
 		},
 		"temp_l1": {
@@ -377,6 +378,7 @@ func getDebugEntities(w *wallbox.Wallbox) map[string]Entity {
 			Getter:    w.ControlPilotStatus,
 			Config: map[string]string{
 				"name":            "Control pilot",
+				"icon":            "mdi:car-connected",
 				"entity_category": "diagnostic",
 			},
 		},
@@ -385,6 +387,7 @@ func getDebugEntities(w *wallbox.Wallbox) map[string]Entity {
 			Getter:    func() string { return fmt.Sprint(w.Data.RedisM2W.ChargerStatus) },
 			Config: map[string]string{
 				"name":            "M2W Status",
+				"icon":            "mdi:state-machine",
 				"entity_category": "diagnostic",
 			},
 		},
@@ -393,6 +396,7 @@ func getDebugEntities(w *wallbox.Wallbox) map[string]Entity {
 			Getter:    w.StateMachineState,
 			Config: map[string]string{
 				"name":            "State machine",
+				"icon":            "mdi:state-machine",
 				"entity_category": "diagnostic",
 			},
 		},
@@ -401,6 +405,7 @@ func getDebugEntities(w *wallbox.Wallbox) map[string]Entity {
 			Getter:    func() string { return fmt.Sprint(w.Data.RedisState.S2open) },
 			Config: map[string]string{
 				"name":            "S2 open",
+				"icon":            "mdi:switch",
 				"entity_category": "diagnostic",
 			},
 		},
