@@ -230,3 +230,95 @@ func (w *Wallbox) ControlPilotStatus() string {
 func (w *Wallbox) StateMachineState() string {
 	return fmt.Sprintf("%d: %s", w.Data.RedisState.SessionState, stateMachineStates[w.Data.RedisState.SessionState])
 }
+
+func (w *Wallbox) AddedEnergy() float64 {
+	return w.Data.RedisState.ScheduleEnergy
+}
+
+func (w *Wallbox) ChargingEnable() int {
+	return w.Data.SQL.ChargingEnable
+}
+
+func (w *Wallbox) ChargingPower() float64 {
+	return w.Data.RedisM2W.Line1Power + w.Data.RedisM2W.Line2Power + w.Data.RedisM2W.Line3Power
+}
+
+func (w *Wallbox) ChargingPowerL1() float64 {
+	return w.Data.RedisM2W.Line1Power
+}
+
+func (w *Wallbox) ChargingPowerL2() float64 {
+	return w.Data.RedisM2W.Line2Power
+}
+
+func (w *Wallbox) ChargingPowerL3() float64 {
+	return w.Data.RedisM2W.Line3Power
+}
+
+func (w *Wallbox) ChargingCurrentL1() float64 {
+	return w.Data.RedisM2W.Line1Current
+}
+
+func (w *Wallbox) ChargingCurrentL2() float64 {
+	return w.Data.RedisM2W.Line2Current
+}
+
+func (w *Wallbox) ChargingCurrentL3() float64 {
+	return w.Data.RedisM2W.Line3Current
+}
+
+func (w *Wallbox) CumulativeAddedEnergy() float64 {
+	return w.Data.SQL.CumulativeAddedEnergy
+}
+
+func (w *Wallbox) MaxChargingCurrent() int {
+	return w.Data.SQL.MaxChargingCurrent
+}
+
+func (w *Wallbox) TemperatureL1() float64 {
+	return w.Data.RedisM2W.TempL1
+}
+
+func (w *Wallbox) TemperatureL2() float64 {
+	return w.Data.RedisM2W.TempL2
+}
+
+func (w *Wallbox) TemperatureL3() float64 {
+	return w.Data.RedisM2W.TempL3
+}
+
+func (w *Wallbox) PowerBoostPowerL1() float64 {
+	return w.Data.RedisM2W.PowerBoostLine1Power
+}
+
+func (w *Wallbox) PowerBoostPowerL2() float64 {
+	return w.Data.RedisM2W.PowerBoostLine2Power
+}
+
+func (w *Wallbox) PowerBoostPowerL3() float64 {
+	return w.Data.RedisM2W.PowerBoostLine3Power
+}
+
+func (w *Wallbox) PowerBoostCurrentL1() float64 {
+	return w.Data.RedisM2W.PowerBoostLine1Current
+}
+
+func (w *Wallbox) PowerBoostCurrentL2() float64 {
+	return w.Data.RedisM2W.PowerBoostLine2Current
+}
+
+func (w *Wallbox) PowerBoostCurrentL3() float64 {
+	return w.Data.RedisM2W.PowerBoostLine3Current
+}
+
+func (w *Wallbox) PowerBoostCumulativeEnergy() float64 {
+	return w.Data.RedisM2W.PowerBoostCumulativeEnergy
+}
+
+func (w *Wallbox) M2WStatus() int {
+	return w.Data.RedisM2W.ChargerStatus
+}
+
+func (w *Wallbox) S2Open() int {
+	return w.Data.RedisState.S2open
+}
