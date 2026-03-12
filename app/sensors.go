@@ -30,7 +30,7 @@ func getEntities(w *wallbox.Wallbox) map[string]Entity {
 	return map[string]Entity{
 		"added_energy": {
 			Component: "sensor",
-			Getter:    func() string { return fmt.Sprint(w.Data.RedisState.ScheduleEnergy) },
+			Getter:    func() string { return fmt.Sprint(w.AddedEnergy()) },
 			RateLimit: ratelimit.NewDeltaRateLimit(10, 50),
 			Config: map[string]string{
 				"name":                        "Added energy",
@@ -66,7 +66,7 @@ func getEntities(w *wallbox.Wallbox) map[string]Entity {
 		"charging_enable": {
 			Component: "switch",
 			Setter:    func(val string) { w.SetChargingEnable(strToInt(val)) },
-			Getter:    func() string { return fmt.Sprint(w.Data.SQL.ChargingEnable) },
+			Getter:    func() string { return fmt.Sprint(w.ChargingEnable()) },
 			Config: map[string]string{
 				"name":        "Charging enable",
 				"payload_on":  "1",
@@ -76,9 +76,7 @@ func getEntities(w *wallbox.Wallbox) map[string]Entity {
 		},
 		"charging_power": {
 			Component: "sensor",
-			Getter: func() string {
-				return fmt.Sprint(w.Data.RedisM2W.Line1Power + w.Data.RedisM2W.Line2Power + w.Data.RedisM2W.Line3Power)
-			},
+			Getter:    func() string { return fmt.Sprint(w.ChargingPower()) },
 			RateLimit: ratelimit.NewDeltaRateLimit(10, 100),
 			Config: map[string]string{
 				"name":                        "Charging power",
@@ -90,9 +88,7 @@ func getEntities(w *wallbox.Wallbox) map[string]Entity {
 		},
 		"charging_power_l1": {
 			Component: "sensor",
-			Getter: func() string {
-				return fmt.Sprint(w.Data.RedisM2W.Line1Power)
-			},
+			Getter:    func() string { return fmt.Sprint(w.ChargingPowerL1()) },
 			RateLimit: ratelimit.NewDeltaRateLimit(10, 100),
 			Config: map[string]string{
 				"name":                        "Charging power L1",
@@ -104,9 +100,7 @@ func getEntities(w *wallbox.Wallbox) map[string]Entity {
 		},
 		"charging_power_l2": {
 			Component: "sensor",
-			Getter: func() string {
-				return fmt.Sprint(w.Data.RedisM2W.Line2Power)
-			},
+			Getter:    func() string { return fmt.Sprint(w.ChargingPowerL2()) },
 			RateLimit: ratelimit.NewDeltaRateLimit(10, 100),
 			Config: map[string]string{
 				"name":                        "Charging power L2",
@@ -118,9 +112,7 @@ func getEntities(w *wallbox.Wallbox) map[string]Entity {
 		},
 		"charging_power_l3": {
 			Component: "sensor",
-			Getter: func() string {
-				return fmt.Sprint(w.Data.RedisM2W.Line3Power)
-			},
+			Getter:    func() string { return fmt.Sprint(w.ChargingPowerL3()) },
 			RateLimit: ratelimit.NewDeltaRateLimit(10, 100),
 			Config: map[string]string{
 				"name":                        "Charging power L3",
@@ -132,9 +124,7 @@ func getEntities(w *wallbox.Wallbox) map[string]Entity {
 		},
 		"charging_current_l1": {
 			Component: "sensor",
-			Getter: func() string {
-				return fmt.Sprint(w.Data.RedisM2W.Line1Current)
-			},
+			Getter:    func() string { return fmt.Sprint(w.ChargingCurrentL1()) },
 			RateLimit: ratelimit.NewDeltaRateLimit(10, 0.2),
 			Config: map[string]string{
 				"name":                        "Charging current L1",
@@ -146,9 +136,7 @@ func getEntities(w *wallbox.Wallbox) map[string]Entity {
 		},
 		"charging_current_l2": {
 			Component: "sensor",
-			Getter: func() string {
-				return fmt.Sprint(w.Data.RedisM2W.Line2Current)
-			},
+			Getter:    func() string { return fmt.Sprint(w.ChargingCurrentL2()) },
 			RateLimit: ratelimit.NewDeltaRateLimit(10, 0.2),
 			Config: map[string]string{
 				"name":                        "Charging current L2",
@@ -160,9 +148,7 @@ func getEntities(w *wallbox.Wallbox) map[string]Entity {
 		},
 		"charging_current_l3": {
 			Component: "sensor",
-			Getter: func() string {
-				return fmt.Sprint(w.Data.RedisM2W.Line3Current)
-			},
+			Getter:    func() string { return fmt.Sprint(w.ChargingCurrentL3()) },
 			RateLimit: ratelimit.NewDeltaRateLimit(10, 0.2),
 			Config: map[string]string{
 				"name":                        "Charging current L3",
@@ -174,7 +160,7 @@ func getEntities(w *wallbox.Wallbox) map[string]Entity {
 		},
 		"cumulative_added_energy": {
 			Component: "sensor",
-			Getter:    func() string { return fmt.Sprint(w.Data.SQL.CumulativeAddedEnergy) },
+			Getter:    func() string { return fmt.Sprint(w.CumulativeAddedEnergy()) },
 			Config: map[string]string{
 				"name":                        "Cumulative added energy",
 				"device_class":                "energy",
@@ -213,7 +199,7 @@ func getEntities(w *wallbox.Wallbox) map[string]Entity {
 		"max_charging_current": {
 			Component: "number",
 			Setter:    func(val string) { w.SetMaxChargingCurrent(strToInt(val)) },
-			Getter:    func() string { return fmt.Sprint(w.Data.SQL.MaxChargingCurrent) },
+			Getter:    func() string { return fmt.Sprint(w.MaxChargingCurrent()) },
 			Config: map[string]string{
 				"name":                "Max charging current",
 				"command_topic":       "~/set",
@@ -234,7 +220,7 @@ func getEntities(w *wallbox.Wallbox) map[string]Entity {
 		},
 		"temp_l1": {
 			Component: "sensor",
-			Getter:    func() string { return fmt.Sprint(w.Data.RedisM2W.TempL1) },
+			Getter:    func() string { return fmt.Sprint(w.TemperatureL1()) },
 			Config: map[string]string{
 				"name":                        "Temperature Line 1",
 				"unit_of_measurement":         "°C",
@@ -246,7 +232,7 @@ func getEntities(w *wallbox.Wallbox) map[string]Entity {
 		},
 		"temp_l2": {
 			Component: "sensor",
-			Getter:    func() string { return fmt.Sprint(w.Data.RedisM2W.TempL2) },
+			Getter:    func() string { return fmt.Sprint(w.TemperatureL2()) },
 			Config: map[string]string{
 				"name":                        "Temperature Line 2",
 				"unit_of_measurement":         "°C",
@@ -258,7 +244,7 @@ func getEntities(w *wallbox.Wallbox) map[string]Entity {
 		},
 		"temp_l3": {
 			Component: "sensor",
-			Getter:    func() string { return fmt.Sprint(w.Data.RedisM2W.TempL3) },
+			Getter:    func() string { return fmt.Sprint(w.TemperatureL3()) },
 			Config: map[string]string{
 				"name":                        "Temperature Line 3",
 				"unit_of_measurement":         "°C",
@@ -275,9 +261,7 @@ func getPowerBoostEntities(w *wallbox.Wallbox) map[string]Entity {
 	return map[string]Entity{
 		"power_boost_power_l1": {
 			Component: "sensor",
-			Getter: func() string {
-				return fmt.Sprint(w.Data.RedisM2W.PowerBoostLine1Power)
-			},
+			Getter:    func() string { return fmt.Sprint(w.PowerBoostPowerL1()) },
 			RateLimit: ratelimit.NewDeltaRateLimit(10, 100),
 			Config: map[string]string{
 				"name":                        "Power Boost L1",
@@ -289,9 +273,7 @@ func getPowerBoostEntities(w *wallbox.Wallbox) map[string]Entity {
 		},
 		"power_boost_power_l2": {
 			Component: "sensor",
-			Getter: func() string {
-				return fmt.Sprint(w.Data.RedisM2W.PowerBoostLine2Power)
-			},
+			Getter:    func() string { return fmt.Sprint(w.PowerBoostPowerL2()) },
 			RateLimit: ratelimit.NewDeltaRateLimit(10, 100),
 			Config: map[string]string{
 				"name":                        "Power Boost L2",
@@ -303,9 +285,7 @@ func getPowerBoostEntities(w *wallbox.Wallbox) map[string]Entity {
 		},
 		"power_boost_power_l3": {
 			Component: "sensor",
-			Getter: func() string {
-				return fmt.Sprint(w.Data.RedisM2W.PowerBoostLine3Power)
-			},
+			Getter:    func() string { return fmt.Sprint(w.PowerBoostPowerL3()) },
 			RateLimit: ratelimit.NewDeltaRateLimit(10, 100),
 			Config: map[string]string{
 				"name":                        "Power Boost L3",
@@ -317,9 +297,7 @@ func getPowerBoostEntities(w *wallbox.Wallbox) map[string]Entity {
 		},
 		"power_boost_current_l1": {
 			Component: "sensor",
-			Getter: func() string {
-				return fmt.Sprint(w.Data.RedisM2W.PowerBoostLine1Current)
-			},
+			Getter:    func() string { return fmt.Sprint(w.PowerBoostCurrentL1()) },
 			RateLimit: ratelimit.NewDeltaRateLimit(10, 0.2),
 			Config: map[string]string{
 				"name":                        "Power Boost current L1",
@@ -331,9 +309,7 @@ func getPowerBoostEntities(w *wallbox.Wallbox) map[string]Entity {
 		},
 		"power_boost_current_l2": {
 			Component: "sensor",
-			Getter: func() string {
-				return fmt.Sprint(w.Data.RedisM2W.PowerBoostLine2Current)
-			},
+			Getter:    func() string { return fmt.Sprint(w.PowerBoostCurrentL2()) },
 			RateLimit: ratelimit.NewDeltaRateLimit(10, 0.2),
 			Config: map[string]string{
 				"name":                        "Power Boost current L2",
@@ -345,9 +321,7 @@ func getPowerBoostEntities(w *wallbox.Wallbox) map[string]Entity {
 		},
 		"power_boost_current_l3": {
 			Component: "sensor",
-			Getter: func() string {
-				return fmt.Sprint(w.Data.RedisM2W.PowerBoostLine3Current)
-			},
+			Getter:    func() string { return fmt.Sprint(w.PowerBoostCurrentL3()) },
 			RateLimit: ratelimit.NewDeltaRateLimit(10, 0.2),
 			Config: map[string]string{
 				"name":                        "Power Boost current L3",
@@ -359,7 +333,7 @@ func getPowerBoostEntities(w *wallbox.Wallbox) map[string]Entity {
 		},
 		"power_boost_cumulative_added_energy": {
 			Component: "sensor",
-			Getter:    func() string { return fmt.Sprint(w.Data.RedisM2W.PowerBoostCumulativeEnergy) },
+			Getter:    func() string { return fmt.Sprint(w.PowerBoostCumulativeEnergy()) },
 			Config: map[string]string{
 				"name":                        "Power Boost Cumulative added energy",
 				"device_class":                "energy",
@@ -384,7 +358,7 @@ func getDebugEntities(w *wallbox.Wallbox) map[string]Entity {
 		},
 		"m2w_status": {
 			Component: "sensor",
-			Getter:    func() string { return fmt.Sprint(w.Data.RedisM2W.ChargerStatus) },
+			Getter:    func() string { return fmt.Sprint(w.M2WStatus()) },
 			Config: map[string]string{
 				"name":            "M2W Status",
 				"icon":            "mdi:state-machine",
@@ -402,7 +376,7 @@ func getDebugEntities(w *wallbox.Wallbox) map[string]Entity {
 		},
 		"s2_open": {
 			Component: "sensor",
-			Getter:    func() string { return fmt.Sprint(w.Data.RedisState.S2open) },
+			Getter:    func() string { return fmt.Sprint(w.S2Open()) },
 			Config: map[string]string{
 				"name":            "S2 open",
 				"icon":            "mdi:switch",
