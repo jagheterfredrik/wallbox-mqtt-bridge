@@ -335,7 +335,7 @@ func getPowerBoostEntities(w *wallbox.Wallbox) map[string]Entity {
 			Component: "sensor",
 			Getter:    func() string { return fmt.Sprint(w.PowerBoostCumulativeEnergy()) },
 			Config: map[string]string{
-				"name":                        "Power Boost Cumulative added energy",
+				"name":                        "Power Boost cumulative energy",
 				"device_class":                "energy",
 				"unit_of_measurement":         "Wh",
 				"state_class":                 "total_increasing",
