@@ -117,14 +117,13 @@ func (w *Wallbox) RefreshData() {
 		"  `wallbox_config`.`lock`," +
 		"  `wallbox_config`.`max_charging_current`," +
 		"  `wallbox_config`.`halo_brightness`," +
-		"  `power_outage_values`.`charged_energy` AS cumulative_added_energy," +
+		"  (SELECT `charged_energy` FROM `power_outage_values` LIMIT 1) AS cumulative_added_energy," +
 		"  IF(`active_session`.`unique_id` != 0," +
 		"    `active_session`.`charged_range`," +
-		"    `latest_session`.`charged_range`) AS added_range " +
+		"    COALESCE(`latest_session`.`charged_range`, 0)) AS added_range " +
 		"FROM `wallbox_config`," +
-		"    `active_session`," +
-		"    `power_outage_values`," +
-		"    (SELECT * FROM `session` ORDER BY `id` DESC LIMIT 1) AS latest_session"
+		"    (SELECT `unique_id`, `charged_range` FROM `active_session` LIMIT 1) AS `active_session`" +
+		"    LEFT JOIN (SELECT `charged_range` FROM `session` ORDER BY `id` DESC LIMIT 1) AS `latest_session` ON 1=1"
 	w.sqlClient.Get(&w.Data.SQL, query)
 }
 
