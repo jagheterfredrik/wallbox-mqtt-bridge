@@ -20,7 +20,12 @@ var connectLostHandler mqtt.ConnectionLostHandler = func(client mqtt.Client, err
 func RunBridge(configPath string) {
 	c := LoadConfig(configPath)
 	w := wallbox.New()
+	w.IncludePowerBoost = c.Settings.PowerBoostEnabled
+
 	w.RefreshData()
+
+	w.StartRedisSubscriptions()
+	defer w.StopRedisSubscriptions()
 
 	serialNumber := w.SerialNumber()
 	firmwareVersion := w.FirmwareVersion()
@@ -104,26 +109,40 @@ func RunBridge(configPath string) {
 
 	published := make(map[string]interface{})
 
+	// publishChanged iterates every entity, evaluates its getter, and publishes
+	// to MQTT if the value has changed since the last publish — subject to the
+	// entity's rate limiter. It is called both on ticker ticks (after a full
+	// SQL+Redis refresh) and on live notifications (no SQL refresh).
+	publishChanged := func() {
+		for key, val := range entityConfig {
+			payload := val.Getter()
+			if published[key] == payload {
+				continue
+			}
+			if val.RateLimit != nil && !val.RateLimit.Allow(strToFloat(payload)) {
+				continue
+			}
+			fmt.Println("Publishing:", key, payload)
+			token := client.Publish(topicPrefix+"/"+key+"/state", 1, true, []byte(payload))
+			token.Wait()
+			published[key] = payload
+		}
+	}
+
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt, syscall.SIGTERM)
 
 	for {
 		select {
 		case <-ticker.C:
+			// Full refresh
 			w.RefreshData()
-			for key, val := range entityConfig {
-				payload := val.Getter()
-				bytePayload := []byte(payload)
-				if published[key] != payload {
-					if val.RateLimit != nil && !val.RateLimit.Allow(strToFloat(payload)) {
-						continue
-					}
-					fmt.Println("Publishing: ", key, payload)
-					token := client.Publish(topicPrefix+"/"+key+"/state", 1, true, bytePayload)
-					token.Wait()
-					published[key] = payload
-				}
-			}
+			publishChanged()
+
+		case <-w.Updates:
+			// Instant Real-Time loop: pub/sub event arrived
+			publishChanged()
+
 		case <-interrupt:
 			fmt.Println("Interrupted. Exiting...")
 			token := client.Publish(availabilityTopic, 1, true, "offline")

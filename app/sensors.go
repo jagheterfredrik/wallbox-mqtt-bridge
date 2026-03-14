@@ -331,6 +331,51 @@ func getPowerBoostEntities(w *wallbox.Wallbox) map[string]Entity {
 				"suggested_display_precision": "1",
 			},
 		},
+		"power_boost_voltage_l1": {
+			Component: "sensor",
+			Getter:    func() string { return fmt.Sprint(w.PowerBoostVoltageL1()) },
+			RateLimit: ratelimit.NewDeltaRateLimit(10, 1),
+			Config: map[string]string{
+				"name":                        "Power Boost voltage L1",
+				"device_class":                "voltage",
+				"unit_of_measurement":         "V",
+				"state_class":                 "measurement",
+				"suggested_display_precision": "1",
+			},
+		},
+		"power_boost_voltage_l2": {
+			Component: "sensor",
+			Getter:    func() string { return fmt.Sprint(w.PowerBoostVoltageL2()) },
+			RateLimit: ratelimit.NewDeltaRateLimit(10, 1),
+			Config: map[string]string{
+				"name":                        "Power Boost voltage L2",
+				"device_class":                "voltage",
+				"unit_of_measurement":         "V",
+				"state_class":                 "measurement",
+				"suggested_display_precision": "1",
+			},
+		},
+		"power_boost_voltage_l3": {
+			Component: "sensor",
+			Getter:    func() string { return fmt.Sprint(w.PowerBoostVoltageL3()) },
+			RateLimit: ratelimit.NewDeltaRateLimit(10, 1),
+			Config: map[string]string{
+				"name":                        "Power Boost voltage L3",
+				"device_class":                "voltage",
+				"unit_of_measurement":         "V",
+				"state_class":                 "measurement",
+				"suggested_display_precision": "1",
+			},
+		},
+		"power_boost_meter_status": {
+			Component: "sensor",
+			Getter:    w.ExternalMeterStatus,
+			Config: map[string]string{
+				"name":            "Power Boost meter status",
+				"icon":            "mdi:meter-electric",
+				"entity_category": "diagnostic",
+			},
+		},
 		"power_boost_cumulative_added_energy": {
 			Component: "sensor",
 			Getter:    func() string { return fmt.Sprint(w.PowerBoostCumulativeEnergy()) },
