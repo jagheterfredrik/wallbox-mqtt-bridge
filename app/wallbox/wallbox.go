@@ -163,7 +163,11 @@ func sendToPosixQueue(path, data string) {
 	mq := mqOpen(pathBytes)
 
 	event := []byte(data)
-	eventPaddedBytes := append(event, bytes.Repeat([]byte{0x00}, 1024-len(event))...)
+	padding := 1024 - len(event)
+	if padding < 0 {
+		padding = 0
+	}
+	eventPaddedBytes := append(event, bytes.Repeat([]byte{0x00}, padding)...)
 
 	mqTimedsend(mq, eventPaddedBytes)
 	mqClose(mq)
