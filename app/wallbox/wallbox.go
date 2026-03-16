@@ -178,7 +178,7 @@ func (w *Wallbox) notifyUpdate() {
 	}
 }
 
-func getRedisFields(obj interface{}) []string {
+func getRedisFields(obj any) []string {
 	var result []string
 	val := reflect.ValueOf(obj)
 	typ := val.Type()
@@ -320,10 +320,7 @@ func sendToPosixQueue(path, data string) {
 	mq := mqOpen(pathBytes)
 
 	event := []byte(data)
-	padding := 1024 - len(event)
-	if padding < 0 {
-		padding = 0
-	}
+	padding := max(1024-len(event), 0)
 	eventPaddedBytes := append(event, bytes.Repeat([]byte{0x00}, padding)...)
 
 	mqTimedsend(mq, eventPaddedBytes)

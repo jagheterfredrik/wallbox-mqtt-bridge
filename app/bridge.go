@@ -3,6 +3,7 @@ package bridge
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"os"
 	"os/signal"
 	"strings"
@@ -33,15 +34,11 @@ func RunBridge(configPath string) {
 
 	entityConfig := getEntities(w)
 	if c.Settings.DebugSensors {
-		for k, v := range getDebugEntities(w) {
-			entityConfig[k] = v
-		}
+		maps.Copy(entityConfig, getDebugEntities(w))
 	}
 
 	if c.Settings.PowerBoostEnabled {
-		for k, v := range getPowerBoostEntities(w) {
-			entityConfig[k] = v
-		}
+		maps.Copy(entityConfig, getPowerBoostEntities(w))
 	}
 
 	topicPrefix := "wallbox_" + serialNumber
@@ -66,7 +63,7 @@ func RunBridge(configPath string) {
 	for key, val := range entityConfig {
 		component := val.Component
 		uid := serialNumber + "_" + key
-		config := map[string]interface{}{
+		config := map[string]any{
 			"~":                  topicPrefix + "/" + key,
 			"availability_topic": availabilityTopic,
 			"state_topic":        "~/state",
@@ -107,7 +104,7 @@ func RunBridge(configPath string) {
 	ticker := time.NewTicker(time.Duration(c.Settings.PollingIntervalSeconds) * time.Second)
 	defer ticker.Stop()
 
-	published := make(map[string]interface{})
+	published := make(map[string]any)
 
 	// publishChanged iterates every entity, evaluates its getter, and publishes
 	// to MQTT if the value has changed since the last publish — subject to the
