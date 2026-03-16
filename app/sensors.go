@@ -254,6 +254,42 @@ func getEntities(w *wallbox.Wallbox) map[string]Entity {
 				"entity_category":             "diagnostic",
 			},
 		},
+		"voltage_l1": {
+			Component: "sensor",
+			Getter:    func() string { return fmt.Sprint(w.VoltageL1()) },
+			RateLimit: ratelimit.NewDeltaRateLimit(10, 5),
+			Config: map[string]string{
+				"name":                        "Voltage Line 1",
+				"unit_of_measurement":         "V",
+				"device_class":                "voltage",
+				"state_class":                 "measurement",
+				"suggested_display_precision": "1",
+			},
+		},
+		"voltage_l2": {
+			Component: "sensor",
+			Getter:    func() string { return fmt.Sprint(w.VoltageL2()) },
+			RateLimit: ratelimit.NewDeltaRateLimit(10, 5),
+			Config: map[string]string{
+				"name":                        "Voltage Line 2",
+				"unit_of_measurement":         "V",
+				"device_class":                "voltage",
+				"state_class":                 "measurement",
+				"suggested_display_precision": "1",
+			},
+		},
+		"voltage_l3": {
+			Component: "sensor",
+			Getter:    func() string { return fmt.Sprint(w.VoltageL3()) },
+			RateLimit: ratelimit.NewDeltaRateLimit(10, 5),
+			Config: map[string]string{
+				"name":                        "Voltage Line 3",
+				"unit_of_measurement":         "V",
+				"device_class":                "voltage",
+				"state_class":                 "measurement",
+				"suggested_display_precision": "1",
+			},
+		},
 	}
 }
 
