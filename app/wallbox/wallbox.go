@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
@@ -124,7 +125,6 @@ type Wallbox struct {
 	PartNum     string `db:"part_number"`
 
 	IncludePowerBoost bool
-	pubsub            *redis.PubSub
 	mu                sync.RWMutex // Protects PubSub, HasSensorData, HasMeterData
 	dataMu            sync.RWMutex // Protects Data, HasStateHash, HasM2WHash
 	PubSub            PubSubData
@@ -142,6 +142,12 @@ type Wallbox struct {
 	// PubSub. Buffered with capacity 1 so the goroutine never blocks: if a
 	// publish is already pending the signal is coalesced.
 	Updates chan struct{}
+
+	// cancelSubscriptions cancels the context passed to the Redis pub/sub
+	// goroutine, signalling it to stop reconnecting and exit cleanly.
+	// Using a context rather than a chan struct{} means it works correctly
+	// across multiple reconnect iterations (a closed channel cannot be reused).
+	cancelSubscriptions context.CancelFunc
 }
 
 func New() *Wallbox {
@@ -154,7 +160,9 @@ func New() *Wallbox {
 	}
 
 	query := "select SUBSTRING_INDEX(part_number, '-', 1) AS charger_type, part_number from charger_info;"
-	w.sqlClient.Get(&w, query)
+	if err := w.sqlClient.Get(&w, query); err != nil {
+		fmt.Println("Warning: failed to read charger info from DB:", err)
+	}
 
 	w.redisClient = redis.NewClient(&redis.Options{
 		Addr:     "localhost:6379",
@@ -218,10 +226,9 @@ func (w *Wallbox) RefreshData() {
 	if w.HasStateHash {
 		stateRes := w.redisClient.HMGet(ctx, "state", getRedisFields(w.Data.RedisState)...)
 		if stateRes.Err() != nil {
-			panic(stateRes.Err())
-		}
-		if err := stateRes.Scan(&w.Data.RedisState); err != nil {
-			panic(err)
+			fmt.Println("Redis HMGet 'state' error (skipping):", stateRes.Err())
+		} else if err := stateRes.Scan(&w.Data.RedisState); err != nil {
+			fmt.Println("Redis Scan 'state' error (skipping):", err)
 		}
 	}
 
@@ -231,10 +238,9 @@ func (w *Wallbox) RefreshData() {
 	if w.HasM2WHash {
 		m2wRes := w.redisClient.HMGet(ctx, "m2w", getRedisFields(w.Data.RedisM2W)...)
 		if m2wRes.Err() != nil {
-			panic(m2wRes.Err())
-		}
-		if err := m2wRes.Scan(&w.Data.RedisM2W); err != nil {
-			panic(err)
+			fmt.Println("Redis HMGet 'm2w' error (skipping):", m2wRes.Err())
+		} else if err := m2wRes.Scan(&w.Data.RedisM2W); err != nil {
+			fmt.Println("Redis Scan 'm2w' error (skipping):", err)
 		}
 	}
 
@@ -272,7 +278,9 @@ func (w *Wallbox) RefreshData() {
 		"FROM `wallbox_config`," +
 		"    (SELECT `unique_id`, `charged_range`, `energy_total` FROM `active_session` LIMIT 1) AS `active_session`" +
 		"    LEFT JOIN (SELECT `charged_range` FROM `session` ORDER BY `id` DESC LIMIT 1) AS `latest_session` ON 1=1"
-	w.sqlClient.Get(&w.Data.SQL, query)
+	if err := w.sqlClient.Get(&w.Data.SQL, query); err != nil {
+		fmt.Println("SQL RefreshData error (skipping):", err)
+	}
 
 	if w.IncludePowerBoost {
 		var dcaEnergy float64
@@ -286,7 +294,9 @@ func (w *Wallbox) RefreshData() {
 
 func (w *Wallbox) SerialNumber() string {
 	var serialNumber string
-	w.sqlClient.Get(&serialNumber, "SELECT `serial_num` FROM charger_info")
+	if err := w.sqlClient.Get(&serialNumber, "SELECT `serial_num` FROM charger_info"); err != nil {
+		fmt.Println("Warning: failed to read serial number:", err)
+	}
 	return serialNumber
 }
 
@@ -305,13 +315,17 @@ func (w *Wallbox) PartNumber() string {
 
 func (w *Wallbox) UserId() string {
 	var userId string
-	w.sqlClient.QueryRow("SELECT `user_id` FROM `users` WHERE `user_id` != 1 ORDER BY `user_id` DESC LIMIT 1").Scan(&userId)
+	if err := w.sqlClient.QueryRow("SELECT `user_id` FROM `users` WHERE `user_id` != 1 ORDER BY `user_id` DESC LIMIT 1").Scan(&userId); err != nil {
+		fmt.Println("Warning: failed to read user ID:", err)
+	}
 	return userId
 }
 
 func (w *Wallbox) AvailableCurrent() int {
 	var availableCurrent int
-	w.sqlClient.QueryRow("SELECT `max_avbl_current` FROM `state_values` ORDER BY `id` DESC LIMIT 1").Scan(&availableCurrent)
+	if err := w.sqlClient.QueryRow("SELECT `max_avbl_current` FROM `state_values` ORDER BY `id` DESC LIMIT 1").Scan(&availableCurrent); err != nil {
+		fmt.Println("Warning: failed to read available current:", err)
+	}
 	return availableCurrent
 }
 
@@ -336,7 +350,9 @@ func (w *Wallbox) SetLocked(lock int) {
 		return
 	}
 	if w.ChargerType == "CPB1" {
-		w.sqlClient.MustExec("UPDATE `wallbox_config` SET `lock`=?", lock)
+		if _, err := w.sqlClient.Exec("UPDATE `wallbox_config` SET `lock`=?", lock); err != nil {
+			fmt.Println("SQL error in SetLocked:", err)
+		}
 	} else if lock == 1 {
 		sendToPosixQueue("WALLBOX_MYWALLBOX_WALLBOX_LOGIN", "EVENT_REQUEST_LOCK")
 	} else {
@@ -358,11 +374,15 @@ func (w *Wallbox) SetChargingEnable(enable int) {
 }
 
 func (w *Wallbox) SetMaxChargingCurrent(current int) {
-	w.sqlClient.MustExec("UPDATE `wallbox_config` SET `max_charging_current`=?", current)
+	if _, err := w.sqlClient.Exec("UPDATE `wallbox_config` SET `max_charging_current`=?", current); err != nil {
+		fmt.Println("SQL error in SetMaxChargingCurrent:", err)
+	}
 }
 
 func (w *Wallbox) SetHaloBrightness(brightness int) {
-	w.sqlClient.MustExec("UPDATE `wallbox_config` SET `halo_brightness`=?", brightness)
+	if _, err := w.sqlClient.Exec("UPDATE `wallbox_config` SET `halo_brightness`=?", brightness); err != nil {
+		fmt.Println("SQL error in SetHaloBrightness:", err)
+	}
 }
 
 // cpConnected returns true when a CP status integer indicates a car is
@@ -840,26 +860,59 @@ func (w *Wallbox) StartRedisSubscriptions() {
 		"/wbx/charger_state_machine/events",
 	}
 
-	w.pubsub = w.redisClient.Subscribe(context.Background(), channels...)
+	ctx, cancel := context.WithCancel(context.Background())
+	w.cancelSubscriptions = cancel
+
 	go func() {
-		for msg := range w.pubsub.Channel() {
-			switch msg.Channel {
-			case "/wbx/telemetry/events":
-				w.processTelemetryEvent(msg.Payload)
-			case "/wbx/micro2wallbox/events":
-				w.processMicro2WallboxEvent(msg.Payload)
-			case "/wbx/charger_state_machine/events":
-				w.processSessionUpdateEvent(msg.Payload)
+		for {
+			// (Re)subscribe. On the first iteration this is the initial
+			// connection; on subsequent iterations it is a reconnect after
+			// an unexpected Redis drop.
+			pubsub := w.redisClient.Subscribe(ctx, channels...)
+
+			for msg := range pubsub.Channel() {
+				switch msg.Channel {
+				case "/wbx/telemetry/events":
+					w.processTelemetryEvent(msg.Payload)
+				case "/wbx/micro2wallbox/events":
+					w.processMicro2WallboxEvent(msg.Payload)
+				case "/wbx/charger_state_machine/events":
+					w.processSessionUpdateEvent(msg.Payload)
+				}
+			}
+
+			// Channel drained. Check whether we were asked to stop.
+			if ctx.Err() != nil {
+				// StopRedisSubscriptions cancelled the context — exit cleanly.
+				pubsub.Close()
+				return
+			}
+
+			// Unexpected close (Redis restart, network drop, etc.).
+			// Clear the live-data flags immediately so the main loop falls back
+			// to SQL polling and stops broadcasting frozen PubSub values.
+			// Then wait briefly and loop to re-subscribe, restoring real-time
+			// updates without requiring a full process restart.
+			fmt.Println("Warning: Redis pub/sub closed unexpectedly — clearing live-data flags and reconnecting in 5s")
+			w.mu.Lock()
+			w.HasSensorData = false
+			w.HasMeterData = false
+			w.mu.Unlock()
+			pubsub.Close()
+
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(5 * time.Second):
+				// continue loop → re-subscribe
 			}
 		}
-		// Channel closed — subscription died.
-		panic("Redis pub/sub channel closed unexpectedly")
 	}()
 }
 
 func (w *Wallbox) StopRedisSubscriptions() {
-	if w.pubsub != nil {
-		w.pubsub.Close()
+	if w.cancelSubscriptions != nil {
+		w.cancelSubscriptions()
 	}
 }
 

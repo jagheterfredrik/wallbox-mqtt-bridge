@@ -1,6 +1,9 @@
 package bridge
 
 import (
+	"fmt"
+	"os"
+
 	"gopkg.in/ini.v1"
 )
 
@@ -23,16 +26,26 @@ type WallboxConfig struct {
 
 func (w *WallboxConfig) SaveTo(path string) {
 	cfg := ini.Empty()
-	cfg.ReflectFrom(w)
-	cfg.SaveTo(path)
+	if err := cfg.ReflectFrom(w); err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: failed to reflect config: %v\n", err)
+		return
+	}
+	if err := cfg.SaveTo(path); err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: failed to save config to %s: %v\n", path, err)
+	}
 }
 
 func LoadConfig(path string) *WallboxConfig {
-	cfg, _ := ini.Load(path)
+	cfg, err := ini.Load(path)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Fatal: could not load config file at %s: %v\n— run with --config to create it\n", path, err)
+		os.Exit(1)
+	}
 
 	var config WallboxConfig
 	if err := cfg.MapTo(&config); err != nil {
-		return nil
+		fmt.Fprintf(os.Stderr, "Fatal: could not parse config file at %s: %v\n", path, err)
+		os.Exit(1)
 	}
 
 	return &config
