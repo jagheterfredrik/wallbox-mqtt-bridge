@@ -264,6 +264,7 @@ func getEntities(w *wallbox.Wallbox) map[string]Entity {
 				"device_class":                "voltage",
 				"state_class":                 "measurement",
 				"suggested_display_precision": "1",
+				"entity_category":             "diagnostic",
 			},
 		},
 		"voltage_l2": {
@@ -276,6 +277,7 @@ func getEntities(w *wallbox.Wallbox) map[string]Entity {
 				"device_class":                "voltage",
 				"state_class":                 "measurement",
 				"suggested_display_precision": "1",
+				"entity_category":             "diagnostic",
 			},
 		},
 		"voltage_l3": {
@@ -288,6 +290,7 @@ func getEntities(w *wallbox.Wallbox) map[string]Entity {
 				"device_class":                "voltage",
 				"state_class":                 "measurement",
 				"suggested_display_precision": "1",
+				"entity_category":             "diagnostic",
 			},
 		},
 	}
