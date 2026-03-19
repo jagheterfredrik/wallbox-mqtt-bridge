@@ -719,6 +719,21 @@ func (w *Wallbox) TemperatureL1() float64 { return w.temperatureL(0) }
 func (w *Wallbox) TemperatureL2() float64 { return w.temperatureL(1) }
 func (w *Wallbox) TemperatureL3() float64 { return w.temperatureL(2) }
 
+// voltageL
+func (w *Wallbox) voltageL(phase int) float64 {
+	w.mu.RLock()
+	defer w.mu.RUnlock()
+
+	if !w.HasSensorData {
+		return 0;
+	}
+	return w.PubSub.InternalVoltage[phase]
+}
+
+func (w *Wallbox) VoltageL1() float64 { return w.voltageL(0) }
+func (w *Wallbox) VoltageL2() float64 { return w.voltageL(1) }
+func (w *Wallbox) VoltageL3() float64 { return w.voltageL(2) }
+
 // powerBoostPowerL — external (house) power per phase.
 // Same HasMeterData-invalid-means-zero semantics as chargingPowerL.
 func (w *Wallbox) powerBoostPowerL(phase int) float64 {
