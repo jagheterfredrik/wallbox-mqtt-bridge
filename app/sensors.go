@@ -257,7 +257,7 @@ func getEntities(w *wallbox.Wallbox) map[string]Entity {
 		"voltage_l1": {
 			Component: "sensor",
 			Getter:    func() string { return fmt.Sprint(w.VoltageL1()) },
-			RateLimit: ratelimit.NewDeltaRateLimit(10, 5),
+			RateLimit: ratelimit.NewDeltaRateLimit(10, 2),
 			Config: map[string]string{
 				"name":                        "Voltage Line 1",
 				"unit_of_measurement":         "V",
@@ -270,7 +270,7 @@ func getEntities(w *wallbox.Wallbox) map[string]Entity {
 		"voltage_l2": {
 			Component: "sensor",
 			Getter:    func() string { return fmt.Sprint(w.VoltageL2()) },
-			RateLimit: ratelimit.NewDeltaRateLimit(10, 5),
+			RateLimit: ratelimit.NewDeltaRateLimit(10, 2),
 			Config: map[string]string{
 				"name":                        "Voltage Line 2",
 				"unit_of_measurement":         "V",
@@ -283,7 +283,7 @@ func getEntities(w *wallbox.Wallbox) map[string]Entity {
 		"voltage_l3": {
 			Component: "sensor",
 			Getter:    func() string { return fmt.Sprint(w.VoltageL3()) },
-			RateLimit: ratelimit.NewDeltaRateLimit(10, 5),
+			RateLimit: ratelimit.NewDeltaRateLimit(10, 2),
 			Config: map[string]string{
 				"name":                        "Voltage Line 3",
 				"unit_of_measurement":         "V",
@@ -373,37 +373,40 @@ func getPowerBoostEntities(w *wallbox.Wallbox) map[string]Entity {
 		"power_boost_voltage_l1": {
 			Component: "sensor",
 			Getter:    func() string { return fmt.Sprint(w.PowerBoostVoltageL1()) },
-			RateLimit: ratelimit.NewDeltaRateLimit(10, 1),
+			RateLimit: ratelimit.NewDeltaRateLimit(10, 2),
 			Config: map[string]string{
 				"name":                        "Power Boost voltage L1",
 				"device_class":                "voltage",
 				"unit_of_measurement":         "V",
 				"state_class":                 "measurement",
 				"suggested_display_precision": "1",
+				"entity_category":             "diagnostic",
 			},
 		},
 		"power_boost_voltage_l2": {
 			Component: "sensor",
 			Getter:    func() string { return fmt.Sprint(w.PowerBoostVoltageL2()) },
-			RateLimit: ratelimit.NewDeltaRateLimit(10, 1),
+			RateLimit: ratelimit.NewDeltaRateLimit(10, 2),
 			Config: map[string]string{
 				"name":                        "Power Boost voltage L2",
 				"device_class":                "voltage",
 				"unit_of_measurement":         "V",
 				"state_class":                 "measurement",
 				"suggested_display_precision": "1",
+				"entity_category":             "diagnostic",
 			},
 		},
 		"power_boost_voltage_l3": {
 			Component: "sensor",
 			Getter:    func() string { return fmt.Sprint(w.PowerBoostVoltageL3()) },
-			RateLimit: ratelimit.NewDeltaRateLimit(10, 1),
+			RateLimit: ratelimit.NewDeltaRateLimit(10, 2),
 			Config: map[string]string{
 				"name":                        "Power Boost voltage L3",
 				"device_class":                "voltage",
 				"unit_of_measurement":         "V",
 				"state_class":                 "measurement",
 				"suggested_display_precision": "1",
+				"entity_category":             "diagnostic",
 			},
 		},
 		"power_boost_meter_status": {
