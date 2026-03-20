@@ -725,7 +725,7 @@ func (w *Wallbox) voltageL(phase int) float64 {
 	defer w.mu.RUnlock()
 
 	if !w.HasSensorData {
-		return 0;
+		return 0
 	}
 	return w.PubSub.InternalVoltage[phase]
 }
