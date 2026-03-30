@@ -227,6 +227,15 @@ func RunBridge(configPath string) {
 
 		case <-w.Updates:
 			// Instant Real-Time loop: pub/sub event arrived
+			// Debounce to coalesce multiple rapid Redis events (e.g. Telemetry and M2W arriving nearly simultaneously)
+			time.Sleep(100 * time.Millisecond)
+
+			// Drain the channel of any pending contiguous update notifications that arrived during sleep
+			select {
+			case <-w.Updates:
+			default:
+			}
+
 			publishChanged()
 
 		case <-interrupt:
