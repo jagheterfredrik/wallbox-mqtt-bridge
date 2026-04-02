@@ -1,7 +1,4 @@
-# This workflow will build a golang project
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-go
-
-name: Go
+name: Go CI/CD
 
 on:
   push:
@@ -10,16 +7,59 @@ on:
     branches: [ "main" ]
 
 jobs:
-
   build:
     runs-on: ubuntu-latest
+    outputs:
+      status: ${{ job.status }}
     steps:
-    - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
 
-    - name: Set up Go
-      uses: actions/setup-go@v4
-      with:
-        go-version: '1.26'
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.26'
+          cache: true
 
-    - name: Build
-      run: ./make.sh
+      - name: Check Formatting
+        run: |
+          if [ -n "$(gofmt -l .)" ]; then
+            echo "The following files are not formatted:"
+            gofmt -l .
+            exit 1
+          fi
+
+      - name: Build
+        run: ./make.sh
+
+      - name: Upload Artifacts
+        if: github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-assets
+          path: |
+            ./bridge-arm64
+            ./bridge-armhf
+
+  deploy:
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: build
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: write
+    steps:
+      - name: Download Artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: release-assets
+
+      - name: Update GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: bridge
+          files: |
+            ./bridge-arm64
+            ./bridge-armhf
+          overwrite: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
