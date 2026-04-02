@@ -59,7 +59,7 @@ jobs:
           tag_name: bridge
           files: |
             ./bridge-arm64
-            ./second-file.ext
+            ./bridge-armhf
           overwrite: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
