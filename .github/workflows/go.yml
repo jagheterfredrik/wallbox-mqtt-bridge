@@ -60,6 +60,5 @@ jobs:
           files: |
             ./bridge-arm64
             ./bridge-armhf
-          overwrite: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
