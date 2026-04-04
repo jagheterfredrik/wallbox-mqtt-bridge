@@ -124,11 +124,23 @@ type Wallbox struct {
 	PartNum     string `db:"part_number"`
 
 	IncludePowerBoost bool
-	mu                sync.RWMutex // Protects PubSub, HasSensorData, HasMeterData
+	mu                sync.RWMutex // Protects PubSub, HasSensorData, HasMeterData, and the Has*Data granular flags
 	dataMu            sync.RWMutex // Protects Data, HasStateHash, HasM2WHash
 	PubSub            PubSubData
 	HasSensorData     bool // true once EVENT_SENSORS_MEASURED received on /wbx/telemetry/events
 	HasMeterData      bool // true once EVENT_FIRMWARE_AND_METER_READINGS received on /wbx/micro2wallbox/events
+
+	// Granular flags set only when the *specific* sensor IDs for each measurement
+	// group are actually received in a telemetry event. Pre-6.6 firmware may emit
+	// an EVENT_SENSORS_MEASURED that contains only SENSOR_STATE_MACHINE /
+	// SENSOR_CONTROL_PILOT_STATUS, leaving InternalCurrent, InternalVoltage and
+	// Temp at zero. Without these flags, chargingCurrentL / chargingPowerL /
+	// temperatureL would return 0 instead of falling through to the m2w hash.
+	HasCurrentData         bool // true once SENSOR_INTERNAL_METER_CURRENT_L* received
+	HasVoltageData         bool // true once SENSOR_INTERNAL_METER_VOLTAGE_L* received
+	HasTempData            bool // true once SENSOR_TEMP_L* received
+	HasExternalCurrentData bool // true once SENSOR_DCA_CURRENT_L* received
+	HasExternalVoltageData bool // true once SENSOR_DCA_VOLTAGE_L* received
 
 	// HasStateHash and HasM2WHash indicate whether the "state" and "m2w" Redis
 	// hashes actually exist. They were present pre-6.6 and replaced by pub/sub
@@ -608,17 +620,22 @@ func (w *Wallbox) ChargingPower() float64 {
 // use on a single-phase unit), return 0 rather than falling through to the hash.
 func (w *Wallbox) chargingPowerL(phase int) float64 {
 	w.mu.RLock()
-	defer w.mu.RUnlock()
+	hasMeterData := w.HasMeterData
+	hasVoltageData := w.HasVoltageData
+	hasCurrentData := w.HasCurrentData
+	internal := w.PubSub.Internal[phase].PowerW
+	voltage := w.PubSub.InternalVoltage[phase]
+	current := w.PubSub.InternalCurrent[phase]
+	w.mu.RUnlock()
 
-	if w.HasMeterData {
-		m := w.PubSub.Internal[phase].PowerW
-		if m.Valid {
-			return m.Value
+	if hasMeterData {
+		if internal.Valid {
+			return internal.Value
 		}
 		return 0
 	}
-	if w.HasSensorData {
-		return w.PubSub.InternalVoltage[phase] * w.PubSub.InternalCurrent[phase]
+	if hasVoltageData && hasCurrentData {
+		return voltage * current
 	}
 	// 6.6- legacy Redis hash; only used when neither M2W nor telemetry active.
 	// If the hash is absent, all fields are zero, so no HasM2WHash guard needed.
@@ -638,17 +655,20 @@ func (w *Wallbox) ChargingPowerL3() float64 { return w.chargingPowerL(2) }
 // chargingCurrentL — same HasMeterData-invalid-means-zero semantics as chargingPowerL.
 func (w *Wallbox) chargingCurrentL(phase int) float64 {
 	w.mu.RLock()
-	defer w.mu.RUnlock()
+	hasMeterData := w.HasMeterData
+	hasCurrentData := w.HasCurrentData
+	internal := w.PubSub.Internal[phase].CurrentA
+	current := w.PubSub.InternalCurrent[phase]
+	w.mu.RUnlock()
 
-	if w.HasMeterData {
-		m := w.PubSub.Internal[phase].CurrentA
-		if m.Valid {
-			return m.Value
+	if hasMeterData {
+		if internal.Valid {
+			return internal.Value
 		}
 		return 0
 	}
-	if w.HasSensorData {
-		return w.PubSub.InternalCurrent[phase]
+	if hasCurrentData {
+		return current
 	}
 	w.dataMu.RLock()
 	defer w.dataMu.RUnlock()
@@ -685,17 +705,20 @@ func (w *Wallbox) MaxChargingCurrent() int {
 // temperatureL — same HasMeterData-invalid-means-zero semantics as chargingPowerL.
 func (w *Wallbox) temperatureL(phase int) float64 {
 	w.mu.RLock()
-	defer w.mu.RUnlock()
+	hasMeterData := w.HasMeterData
+	hasTempData := w.HasTempData
+	internal := w.PubSub.Internal[phase].TempDeg
+	temp := w.PubSub.Temp[phase]
+	w.mu.RUnlock()
 
-	if w.HasMeterData {
-		m := w.PubSub.Internal[phase].TempDeg
-		if m.Valid {
-			return m.Value
+	if hasMeterData {
+		if internal.Valid {
+			return internal.Value
 		}
 		return 0
 	}
-	if w.HasSensorData {
-		return w.PubSub.Temp[phase]
+	if hasTempData {
+		return temp
 	}
 	w.dataMu.RLock()
 	defer w.dataMu.RUnlock()
@@ -715,7 +738,7 @@ func (w *Wallbox) voltageL(phase int) float64 {
 	w.mu.RLock()
 	defer w.mu.RUnlock()
 
-	if !w.HasSensorData {
+	if !w.HasVoltageData {
 		return 0
 	}
 	return w.PubSub.InternalVoltage[phase]
@@ -729,17 +752,22 @@ func (w *Wallbox) VoltageL3() float64 { return w.voltageL(2) }
 // Same HasMeterData-invalid-means-zero semantics as chargingPowerL.
 func (w *Wallbox) powerBoostPowerL(phase int) float64 {
 	w.mu.RLock()
-	defer w.mu.RUnlock()
+	hasMeterData := w.HasMeterData
+	hasExtVoltage := w.HasExternalVoltageData
+	hasExtCurrent := w.HasExternalCurrentData
+	external := w.PubSub.External[phase].PowerW
+	voltage := w.PubSub.ExternalVoltage[phase]
+	current := w.PubSub.ExternalCurrent[phase]
+	w.mu.RUnlock()
 
-	if w.HasMeterData {
-		m := w.PubSub.External[phase].PowerW
-		if m.Valid {
-			return m.Value
+	if hasMeterData {
+		if external.Valid {
+			return external.Value
 		}
 		return 0
 	}
-	if w.HasSensorData {
-		return w.PubSub.ExternalVoltage[phase] * w.PubSub.ExternalCurrent[phase]
+	if hasExtVoltage && hasExtCurrent {
+		return voltage * current
 	}
 	w.dataMu.RLock()
 	defer w.dataMu.RUnlock()
@@ -756,17 +784,20 @@ func (w *Wallbox) PowerBoostPowerL3() float64 { return w.powerBoostPowerL(2) }
 
 func (w *Wallbox) powerBoostCurrentL(phase int) float64 {
 	w.mu.RLock()
-	defer w.mu.RUnlock()
+	hasMeterData := w.HasMeterData
+	hasExtCurrent := w.HasExternalCurrentData
+	external := w.PubSub.External[phase].CurrentA
+	current := w.PubSub.ExternalCurrent[phase]
+	w.mu.RUnlock()
 
-	if w.HasMeterData {
-		m := w.PubSub.External[phase].CurrentA
-		if m.Valid {
-			return m.Value
+	if hasMeterData {
+		if external.Valid {
+			return external.Value
 		}
 		return 0
 	}
-	if w.HasSensorData {
-		return w.PubSub.ExternalCurrent[phase]
+	if hasExtCurrent {
+		return current
 	}
 	w.dataMu.RLock()
 	defer w.dataMu.RUnlock()
@@ -783,17 +814,20 @@ func (w *Wallbox) PowerBoostCurrentL3() float64 { return w.powerBoostCurrentL(2)
 
 func (w *Wallbox) powerBoostVoltageL(phase int) float64 {
 	w.mu.RLock()
-	defer w.mu.RUnlock()
+	hasMeterData := w.HasMeterData
+	hasExtVoltage := w.HasExternalVoltageData
+	external := w.PubSub.External[phase].VoltageV
+	voltage := w.PubSub.ExternalVoltage[phase]
+	w.mu.RUnlock()
 
-	if w.HasMeterData {
-		m := w.PubSub.External[phase].VoltageV
-		if m.Valid {
-			return m.Value
+	if hasMeterData {
+		if external.Valid {
+			return external.Value
 		}
 		return 0
 	}
-	if w.HasSensorData {
-		return w.PubSub.ExternalVoltage[phase]
+	if hasExtVoltage {
+		return voltage
 	}
 	return 0
 }
@@ -903,6 +937,11 @@ func (w *Wallbox) StartRedisSubscriptions() {
 			w.mu.Lock()
 			w.HasSensorData = false
 			w.HasMeterData = false
+			w.HasCurrentData = false
+			w.HasVoltageData = false
+			w.HasTempData = false
+			w.HasExternalCurrentData = false
+			w.HasExternalVoltageData = false
 			w.mu.Unlock()
 			pubsub.Close()
 
@@ -950,10 +989,13 @@ func (w *Wallbox) processTelemetryEvent(payload string) {
 			w.PubSub.StateMachine = int(s.Value)
 		case "SENSOR_TEMP_L1":
 			w.PubSub.Temp[0] = s.Value
+			w.HasTempData = true
 		case "SENSOR_TEMP_L2":
 			w.PubSub.Temp[1] = s.Value
+			w.HasTempData = true
 		case "SENSOR_TEMP_L3":
 			w.PubSub.Temp[2] = s.Value
+			w.HasTempData = true
 		case "SENSOR_INTERNAL_METER_ENERGY":
 			w.PubSub.InternalMeterEnergy = s.Value
 		case "SENSOR_CHARGING_ENABLE":
@@ -963,29 +1005,41 @@ func (w *Wallbox) processTelemetryEvent(payload string) {
 
 		case "SENSOR_INTERNAL_METER_VOLTAGE_L1":
 			w.PubSub.InternalVoltage[0] = s.Value
+			w.HasVoltageData = true
 		case "SENSOR_INTERNAL_METER_VOLTAGE_L2":
 			w.PubSub.InternalVoltage[1] = s.Value
+			w.HasVoltageData = true
 		case "SENSOR_INTERNAL_METER_VOLTAGE_L3":
 			w.PubSub.InternalVoltage[2] = s.Value
+			w.HasVoltageData = true
 		case "SENSOR_INTERNAL_METER_CURRENT_L1":
 			w.PubSub.InternalCurrent[0] = s.Value
+			w.HasCurrentData = true
 		case "SENSOR_INTERNAL_METER_CURRENT_L2":
 			w.PubSub.InternalCurrent[1] = s.Value
+			w.HasCurrentData = true
 		case "SENSOR_INTERNAL_METER_CURRENT_L3":
 			w.PubSub.InternalCurrent[2] = s.Value
+			w.HasCurrentData = true
 
 		case "SENSOR_DCA_VOLTAGE_L1":
 			w.PubSub.ExternalVoltage[0] = s.Value
+			w.HasExternalVoltageData = true
 		case "SENSOR_DCA_VOLTAGE_L2":
 			w.PubSub.ExternalVoltage[1] = s.Value
+			w.HasExternalVoltageData = true
 		case "SENSOR_DCA_VOLTAGE_L3":
 			w.PubSub.ExternalVoltage[2] = s.Value
+			w.HasExternalVoltageData = true
 		case "SENSOR_DCA_CURRENT_L1":
 			w.PubSub.ExternalCurrent[0] = s.Value
+			w.HasExternalCurrentData = true
 		case "SENSOR_DCA_CURRENT_L2":
 			w.PubSub.ExternalCurrent[1] = s.Value
+			w.HasExternalCurrentData = true
 		case "SENSOR_DCA_CURRENT_L3":
 			w.PubSub.ExternalCurrent[2] = s.Value
+			w.HasExternalCurrentData = true
 		}
 	}
 	w.notifyUpdate()
