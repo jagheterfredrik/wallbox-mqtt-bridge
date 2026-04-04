@@ -101,7 +101,6 @@ type PubSubData struct {
 	ControlPilotStatus      int        // SENSOR_CONTROL_PILOT_STATUS
 	StateMachine            int        // SENSOR_STATE_MACHINE
 	ChargingEnable          float64    // SENSOR_CHARGING_ENABLE
-	MaxChargingCurrent      float64    // SENSOR_MAX_CHARGING_CURRENT
 	InternalMeterEnergy     float64    // SENSOR_INTERNAL_METER_ENERGY
 	InternalVoltage         [3]float64 // SENSOR_INTERNAL_METER_VOLTAGE_L1/L2/L3
 	InternalCurrent         [3]float64 // SENSOR_INTERNAL_METER_CURRENT_L1/L2/L3
@@ -678,14 +677,6 @@ func (w *Wallbox) CumulativeAddedEnergy() float64 {
 }
 
 func (w *Wallbox) MaxChargingCurrent() int {
-	w.mu.RLock()
-	current := w.PubSub.MaxChargingCurrent
-	w.mu.RUnlock()
-
-	// Min config value is 6 A, so it can never legitimately be 0.
-	if current > 0 {
-		return int(current)
-	}
 	w.dataMu.RLock()
 	defer w.dataMu.RUnlock()
 	return w.Data.SQL.MaxChargingCurrent
@@ -967,8 +958,6 @@ func (w *Wallbox) processTelemetryEvent(payload string) {
 			w.PubSub.InternalMeterEnergy = s.Value
 		case "SENSOR_CHARGING_ENABLE":
 			w.PubSub.ChargingEnable = s.Value
-		case "SENSOR_MAX_CHARGING_CURRENT":
-			w.PubSub.MaxChargingCurrent = s.Value
 		case "SENSOR_EXTERNAL_METER_STATUS":
 			w.PubSub.ExternalMeterStatusCode = int(s.Value)
 
