@@ -100,7 +100,6 @@ type PubSubData struct {
 	// { "body": { "sensors": [ {"id": "SENSOR_CONTROL_PILOT_STATUS", "value": 194}, ... ] } }
 	ControlPilotStatus      int        // SENSOR_CONTROL_PILOT_STATUS
 	StateMachine            int        // SENSOR_STATE_MACHINE
-	ChargingEnable          float64    // SENSOR_CHARGING_ENABLE
 	InternalMeterEnergy     float64    // SENSOR_INTERNAL_METER_ENERGY
 	InternalVoltage         [3]float64 // SENSOR_INTERNAL_METER_VOLTAGE_L1/L2/L3
 	InternalCurrent         [3]float64 // SENSOR_INTERNAL_METER_CURRENT_L1/L2/L3
@@ -595,16 +594,6 @@ func (w *Wallbox) AddedEnergy() float64 {
 }
 
 func (w *Wallbox) ChargingEnable() int {
-	w.mu.RLock()
-	hasSensorData := w.HasSensorData
-	chargingEnable := w.PubSub.ChargingEnable
-	w.mu.RUnlock()
-
-	// 0 is a valid value (charging disabled), so gate on hasTelemetry rather
-	// than checking > 0.
-	if hasSensorData {
-		return int(chargingEnable)
-	}
 	w.dataMu.RLock()
 	defer w.dataMu.RUnlock()
 	return w.Data.SQL.ChargingEnable
@@ -998,8 +987,6 @@ func (w *Wallbox) processTelemetryEvent(payload string) {
 			w.HasTempData = true
 		case "SENSOR_INTERNAL_METER_ENERGY":
 			w.PubSub.InternalMeterEnergy = s.Value
-		case "SENSOR_CHARGING_ENABLE":
-			w.PubSub.ChargingEnable = s.Value
 		case "SENSOR_EXTERNAL_METER_STATUS":
 			w.PubSub.ExternalMeterStatusCode = int(s.Value)
 
