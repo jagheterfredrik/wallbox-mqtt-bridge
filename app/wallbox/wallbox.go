@@ -376,7 +376,11 @@ func (w *Wallbox) SetChargingEnable(enable int) {
 	if enable == w.ChargingEnable() {
 		return
 	}
-	if enable == 1 {
+	if w.ChargerType == "CPB1" {
+		if _, err := w.sqlClient.Exec("UPDATE `wallbox_config` SET `charging_enable`=?", enable); err != nil {
+			fmt.Println("SQL error in SetChargingEnable:", err)
+		}
+	} else if enable == 1 {
 		sendToPosixQueue("WALLBOX_MYWALLBOX_WALLBOX_STATEMACHINE", "EVENT_REQUEST_USER_ACTION#1.000000")
 	} else {
 		sendToPosixQueue("WALLBOX_MYWALLBOX_WALLBOX_STATEMACHINE", "EVENT_REQUEST_USER_ACTION#2.000000")
