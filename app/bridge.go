@@ -19,6 +19,16 @@ const (
 	mqttPublishTimeout    = 2 * time.Second
 	mqttReconnectInterval = 10 * time.Second
 	mqttInitialRetryDelay = 5 * time.Second
+
+	// Republish availability=online retained on this cadence to defeat
+	// the LWT race that follows any reconnect. After a reconnect, onConnect
+	// publishes online retained — but the broker may still be processing
+	// the stale-session timeout for the OLD session, and its LWT publish
+	// fires AFTER session timeout, NOT at TCP disconnect. The LWT can land
+	// 1+ seconds AFTER our online publish and overwrite it. A periodic
+	// republish guarantees the topic returns to online within this
+	// interval regardless of LWT timing.
+	availabilityRepublishInterval = 30 * time.Second
 )
 
 func RunBridge(configPath string) {
@@ -178,6 +188,9 @@ func RunBridge(configPath string) {
 	ticker := time.NewTicker(time.Duration(c.Settings.PollingIntervalSeconds) * time.Second)
 	defer ticker.Stop()
 
+	availabilityTicker := time.NewTicker(availabilityRepublishInterval)
+	defer availabilityTicker.Stop()
+
 	// publishChanged iterates every entity, evaluates its getter, and publishes
 	// to MQTT if the value has changed since the last publish — subject to the
 	// entity's rate limiter. It is called both on ticker ticks (after a full
@@ -224,6 +237,14 @@ func RunBridge(configPath string) {
 			// Full refresh
 			w.RefreshData()
 			publishChanged()
+
+		case <-availabilityTicker.C:
+			// Periodic LWT-race recovery (see availabilityRepublishInterval).
+			// No-op when disconnected; paho's auto-reconnect will fire onConnect
+			// and republish availability when the broker comes back.
+			if client.IsConnected() {
+				client.Publish(availabilityTopic, 1, true, "online")
+			}
 
 		case <-w.Updates:
 			// Instant Real-Time loop: pub/sub event arrived
