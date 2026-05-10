@@ -161,6 +161,7 @@ func getEntities(w *wallbox.Wallbox) map[string]Entity {
 		"cumulative_added_energy": {
 			Component: "sensor",
 			Getter:    func() string { return fmt.Sprint(w.CumulativeAddedEnergy()) },
+			RateLimit: ratelimit.NewDeltaRateLimit(10, 100),
 			Config: map[string]string{
 				"name":                        "Cumulative added energy",
 				"device_class":                "energy",
