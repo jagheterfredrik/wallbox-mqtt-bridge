@@ -152,6 +152,9 @@ func RunBridge(configPath string) {
 	opts.SetPassword(c.MQTT.Password)
 	opts.SetWill(availabilityTopic, "offline", 1, true)
 
+	// use deterministic ClientID to prevent LWT race on reconnect
+	opts.SetClientID("wallbox-mqtt-bridge-" + serialNumber)
+
 	// Enable paho's built-in reconnect logic so a transient broker outage
 	// (HA update, network blip) never crashes the bridge.
 	opts.SetAutoReconnect(true)
