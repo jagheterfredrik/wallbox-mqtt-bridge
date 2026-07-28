@@ -26,6 +26,16 @@ func strToFloat(val string) float64 {
 	return f
 }
 
+// availableCurrentOrDefault returns the real available current, falling back
+// to def whenever the reported value is below min (e.g. unknown/0), since a
+// max lower than min would make the MQTT discovery config invalid.
+func availableCurrentOrDefault(w *wallbox.Wallbox, min, def int) int {
+	if v := w.AvailableCurrent(); v >= min {
+		return v
+	}
+	return def
+}
+
 func getEntities(w *wallbox.Wallbox) map[string]Entity {
 	return map[string]Entity{
 		"added_energy": {
@@ -205,7 +215,7 @@ func getEntities(w *wallbox.Wallbox) map[string]Entity {
 				"name":                "Max charging current",
 				"command_topic":       "~/set",
 				"min":                 "6",
-				"max":                 fmt.Sprint(w.AvailableCurrent()),
+				"max":                 fmt.Sprint(availableCurrentOrDefault(w, 6, 32)),
 				"unit_of_measurement": "A",
 				"device_class":        "current",
 				"entity_category":     "config",
