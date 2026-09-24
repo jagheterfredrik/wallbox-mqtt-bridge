@@ -8,6 +8,11 @@ import (
 	"github.com/jagheterfredrik/wallbox-mqtt-bridge/app/wallbox"
 )
 
+// maxChargingCurrentMin is the minimum allowed value for the max_charging_current
+// entity, used both as its MQTT discovery "min" and as the floor passed to
+// availableCurrentOrDefault.
+const maxChargingCurrentMin = 6
+
 type Entity struct {
 	Component string
 	Getter    func() string
@@ -27,13 +32,15 @@ func strToFloat(val string) float64 {
 }
 
 // availableCurrentOrDefault returns the real available current, falling back
-// to def whenever the reported value is below min (e.g. unknown/0), since a
-// max lower than min would make the MQTT discovery config invalid.
-func availableCurrentOrDefault(w *wallbox.Wallbox, min, def int) int {
-	if v := w.AvailableCurrent(); v >= min {
+// to fallback whenever the reported value is below minCurrent (e.g. unknown/0),
+// since a max lower than min would make the MQTT discovery config invalid.
+func availableCurrentOrDefault(w *wallbox.Wallbox, minCurrent, fallback int) int {
+	v := w.AvailableCurrent()
+	if v >= minCurrent {
 		return v
 	}
-	return def
+	fmt.Println("Warning: reported available current", v, "is below minimum", minCurrent, "— falling back to", fallback)
+	return fallback
 }
 
 func getEntities(w *wallbox.Wallbox) map[string]Entity {
@@ -214,8 +221,8 @@ func getEntities(w *wallbox.Wallbox) map[string]Entity {
 			Config: map[string]string{
 				"name":                "Max charging current",
 				"command_topic":       "~/set",
-				"min":                 "6",
-				"max":                 fmt.Sprint(availableCurrentOrDefault(w, 6, 32)),
+				"min":                 fmt.Sprint(maxChargingCurrentMin),
+				"max":                 fmt.Sprint(availableCurrentOrDefault(w, maxChargingCurrentMin, 32)),
 				"unit_of_measurement": "A",
 				"device_class":        "current",
 				"entity_category":     "config",
