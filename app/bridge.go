@@ -204,15 +204,21 @@ func RunBridge(configPath string) {
 				continue
 			}
 			fmt.Println("Publishing:", key, payload)
-			token := client.Publish(topicPrefix+"/"+key+"/state", 1, true, []byte(payload))
+			// QoS 0: paho keeps unacknowledged QoS 1 publishes in its store and,
+			// after an automatic reconnect, replays them in map iteration order,
+			// so Home Assistant receives a burst of stale values out of order
+			// (counters appear to go backwards). A state value is only useful
+			// while it is current, and onConnect clears the published cache so
+			// every current value is re-sent after a reconnect anyway.
+			token := client.Publish(topicPrefix+"/"+key+"/state", 0, true, []byte(payload))
 
 			// Use a timeout instead of blocking forever; a silent network hang
 			// would otherwise freeze the entire poll loop indefinitely.
 			//
 			// On timeout, drop the cache entry so the next tick retries. Without
-			// this the value counts as published even though the broker never
-			// acknowledged it, and HA keeps showing the previous value until the
-			// sensor happens to change again. Only drop the entry if it still
+			// this the value counts as published even though it never made it
+			// onto the connection, and HA keeps showing the previous value until
+			// the sensor happens to change again. Only drop the entry if it still
 			// holds the payload we failed to send, so a later successful publish
 			// isn't invalidated by an older token timing out.
 			go func(t mqtt.Token, k, p string) {
