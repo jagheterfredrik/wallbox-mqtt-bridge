@@ -19,6 +19,8 @@ const (
 	mqttPublishTimeout    = 2 * time.Second
 	mqttReconnectInterval = 10 * time.Second
 	mqttInitialRetryDelay = 5 * time.Second
+	mqttKeepAlive         = 60 * time.Second
+	mqttPingTimeout       = 30 * time.Second
 )
 
 func RunBridge(configPath string) {
@@ -159,6 +161,16 @@ func RunBridge(configPath string) {
 	// (HA update, network blip) never crashes the bridge.
 	opts.SetAutoReconnect(true)
 	opts.SetMaxReconnectInterval(mqttReconnectInterval)
+
+	// The charger's Wi-Fi (WILC over SDIO) regularly freezes for several
+	// seconds and then delivers the queued packets at once; freezes of 10 s
+	// have been measured. With paho's defaults (keepalive 30 s, ping timeout
+	// 10 s) any freeze over 10 s drops the connection with "pingresp not
+	// received" and forces a reconnect. A 30 s ping timeout rides those out,
+	// and a 60 s keepalive gives the broker a 90 s window (1.5 x keepalive)
+	// before it considers the client gone.
+	opts.SetKeepAlive(mqttKeepAlive)
+	opts.SetPingTimeout(mqttPingTimeout)
 	opts.SetOnConnectHandler(onConnect)
 	opts.SetConnectionLostHandler(func(client mqtt.Client, err error) {
 		fmt.Printf("MQTT connection lost: %v — reconnecting automatically\n", err)
