@@ -39,6 +39,7 @@ jobs:
           path: |
             ./bridge-arm64
             ./bridge-armhf
+            ./install.sh
 
   deploy:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
@@ -60,5 +61,6 @@ jobs:
           files: |
             ./bridge-arm64
             ./bridge-armhf
+            ./install.sh
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

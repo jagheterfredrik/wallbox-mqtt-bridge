@@ -32,7 +32,7 @@ echo "Setting up auto-start"
 
 content="[Unit]
 Description=MQTT Bridge
-After=network.target
+After=network.target mysqld.service
 Requires=mysqld.service
 StartLimitIntervalSec=0
 
