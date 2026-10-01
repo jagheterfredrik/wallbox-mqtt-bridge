@@ -3,6 +3,7 @@ package bridge
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"maps"
 	"os"
 	"os/signal"
@@ -21,6 +22,7 @@ const (
 	mqttInitialRetryDelay = 5 * time.Second
 	mqttKeepAlive         = 60 * time.Second
 	mqttPingTimeout       = 30 * time.Second
+	mqttConnectTimeout    = 10 * time.Second
 )
 
 func RunBridge(configPath string) {
@@ -144,6 +146,11 @@ func RunBridge(configPath string) {
 		publishedMu.Unlock()
 	}
 
+	// paho is silent by default; its warnings and errors say why a connection
+	// attempt failed (dial error, rejected CONNACK) and only appear then.
+	mqtt.ERROR = log.New(os.Stdout, "[mqtt] ERROR ", 0)
+	mqtt.WARN = log.New(os.Stdout, "[mqtt] WARN ", 0)
+
 	opts := mqtt.NewClientOptions()
 	brokerURL := c.MQTT.URL
 	if brokerURL == "" {
@@ -171,6 +178,15 @@ func RunBridge(configPath string) {
 	// before it considers the client gone.
 	opts.SetKeepAlive(mqttKeepAlive)
 	opts.SetPingTimeout(mqttPingTimeout)
+
+	// Each reconnect attempt waits up to the connect timeout (paho's default
+	// is 30 s) for the TCP connection and CONNACK before backing off, so a
+	// few attempts made while the Wi-Fi is frozen add up to minutes. Against
+	// a broker on the LAN 10 s is ample, and a hung attempt is retried sooner.
+	opts.SetConnectTimeout(mqttConnectTimeout)
+	opts.SetReconnectingHandler(func(client mqtt.Client, o *mqtt.ClientOptions) {
+		fmt.Println("MQTT reconnecting...")
+	})
 	opts.SetOnConnectHandler(onConnect)
 	opts.SetConnectionLostHandler(func(client mqtt.Client, err error) {
 		fmt.Printf("MQTT connection lost: %v — reconnecting automatically\n", err)
@@ -215,7 +231,9 @@ func RunBridge(configPath string) {
 			if val.RateLimit != nil && !val.RateLimit.Allow(strToFloat(payload)) {
 				continue
 			}
-			fmt.Println("Publishing:", key, payload)
+			if c.Settings.DebugSensors {
+				fmt.Println("Publishing:", key, payload)
+			}
 			// QoS 0: paho keeps unacknowledged QoS 1 publishes in its store and,
 			// after an automatic reconnect, replays them in map iteration order,
 			// so Home Assistant receives a burst of stale values out of order
