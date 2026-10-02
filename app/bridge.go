@@ -225,10 +225,14 @@ func RunBridge(configPath string) {
 
 		for key, val := range entityConfig {
 			payload := val.Getter()
-			if published[key] == payload {
+			// "" means the source hasn't delivered a reading yet; publishing it
+			// would show up in Home Assistant as a bogus value.
+			if payload == "" || published[key] == payload {
 				continue
 			}
-			if val.RateLimit != nil && !val.RateLimit.Allow(strToFloat(payload)) {
+			// "None" (an invalid reading) is not a number, so the delta rate
+			// limit doesn't apply to it; the switch to unknown goes out at once.
+			if payload != "None" && val.RateLimit != nil && !val.RateLimit.Allow(strToFloat(payload)) {
 				continue
 			}
 			if c.Settings.DebugSensors {

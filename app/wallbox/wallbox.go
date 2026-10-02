@@ -694,8 +694,23 @@ func (w *Wallbox) MaxChargingCurrent() int {
 	return w.Data.SQL.MaxChargingCurrent
 }
 
-// temperatureL — same HasMeterData-invalid-means-zero semantics as chargingPowerL.
-func (w *Wallbox) temperatureL(phase int) float64 {
+// ReadingState says whether a measurement can be shown.
+type ReadingState int
+
+const (
+	// ReadingOK: the value is a real reading.
+	ReadingOK ReadingState = iota
+	// ReadingMissing: no source has delivered the measurement yet, e.g. right
+	// after startup, before the first telemetry event.
+	ReadingMissing
+	// ReadingInvalid: the meter readings event flags the measurement invalid.
+	ReadingInvalid
+)
+
+// TemperatureReading — internal temperature per phase, with the same source
+// priority as chargingPowerL: the meter readings event, then telemetry, then
+// the legacy m2w hash.
+func (w *Wallbox) TemperatureReading(phase int) (float64, ReadingState) {
 	w.mu.RLock()
 	hasMeterData := w.HasMeterData
 	hasTempData := w.HasTempData
@@ -705,20 +720,29 @@ func (w *Wallbox) temperatureL(phase int) float64 {
 
 	if hasMeterData {
 		if internal.Valid {
-			return internal.Value
+			return internal.Value, ReadingOK
 		}
-		return 0
+		return 0, ReadingInvalid
 	}
 	if hasTempData {
-		return temp
+		return temp, ReadingOK
 	}
 	w.dataMu.RLock()
 	defer w.dataMu.RUnlock()
+	if !w.HasM2WHash {
+		return 0, ReadingMissing
+	}
 	return [3]float64{
 		w.Data.RedisM2W.TempL1,
 		w.Data.RedisM2W.TempL2,
 		w.Data.RedisM2W.TempL3,
-	}[phase]
+	}[phase], ReadingOK
+}
+
+// temperatureL — TemperatureReading as a plain value, 0 when there is none.
+func (w *Wallbox) temperatureL(phase int) float64 {
+	v, _ := w.TemperatureReading(phase)
+	return v
 }
 
 func (w *Wallbox) TemperatureL1() float64 { return w.temperatureL(0) }
@@ -732,7 +756,7 @@ func (w *Wallbox) TemperatureL3() float64 { return w.temperatureL(2) }
 // SENSOR_INTERNAL_METER_VOLTAGE_L* telemetry. Without the HasMeterData branch
 // these sensors read 0 on firmware that emits the meter readings event but not
 // the voltage sensor IDs, even though every sibling accessor works.
-func (w *Wallbox) voltageL(phase int) float64 {
+func (w *Wallbox) VoltageReading(phase int) (float64, ReadingState) {
 	w.mu.RLock()
 	hasMeterData := w.HasMeterData
 	hasVoltageData := w.HasVoltageData
@@ -742,14 +766,20 @@ func (w *Wallbox) voltageL(phase int) float64 {
 
 	if hasMeterData {
 		if internal.Valid {
-			return internal.Value
+			return internal.Value, ReadingOK
 		}
-		return 0
+		return 0, ReadingInvalid
 	}
 	if hasVoltageData {
-		return voltage
+		return voltage, ReadingOK
 	}
-	return 0
+	return 0, ReadingMissing
+}
+
+// voltageL — VoltageReading as a plain value, 0 when there is none.
+func (w *Wallbox) voltageL(phase int) float64 {
+	v, _ := w.VoltageReading(phase)
+	return v
 }
 
 func (w *Wallbox) VoltageL1() float64 { return w.voltageL(0) }
@@ -820,7 +850,8 @@ func (w *Wallbox) PowerBoostCurrentL1() float64 { return w.powerBoostCurrentL(0)
 func (w *Wallbox) PowerBoostCurrentL2() float64 { return w.powerBoostCurrentL(1) }
 func (w *Wallbox) PowerBoostCurrentL3() float64 { return w.powerBoostCurrentL(2) }
 
-func (w *Wallbox) powerBoostVoltageL(phase int) float64 {
+// PowerBoostVoltageReading — external (house) voltage per phase.
+func (w *Wallbox) PowerBoostVoltageReading(phase int) (float64, ReadingState) {
 	w.mu.RLock()
 	hasMeterData := w.HasMeterData
 	hasExtVoltage := w.HasExternalVoltageData
@@ -830,14 +861,21 @@ func (w *Wallbox) powerBoostVoltageL(phase int) float64 {
 
 	if hasMeterData {
 		if external.Valid {
-			return external.Value
+			return external.Value, ReadingOK
 		}
-		return 0
+		return 0, ReadingInvalid
 	}
 	if hasExtVoltage {
-		return voltage
+		return voltage, ReadingOK
 	}
-	return 0
+	return 0, ReadingMissing
+}
+
+// powerBoostVoltageL — PowerBoostVoltageReading as a plain value, 0 when
+// there is none.
+func (w *Wallbox) powerBoostVoltageL(phase int) float64 {
+	v, _ := w.PowerBoostVoltageReading(phase)
+	return v
 }
 
 func (w *Wallbox) PowerBoostVoltageL1() float64 { return w.powerBoostVoltageL(0) }
