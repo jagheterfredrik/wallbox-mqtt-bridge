@@ -21,6 +21,20 @@ func strToInt(val string) int {
 	return i
 }
 
+// readingPayload formats a measurement for publishing. A missing reading
+// returns "", which publishChanged skips, so Home Assistant keeps its last
+// value instead of seeing 0 before the first telemetry event. An invalid one
+// returns "None", which Home Assistant shows as unknown rather than as 0.
+func readingPayload(v float64, state wallbox.ReadingState) string {
+	switch state {
+	case wallbox.ReadingMissing:
+		return ""
+	case wallbox.ReadingInvalid:
+		return "None"
+	}
+	return fmt.Sprint(v)
+}
+
 func strToFloat(val string) float64 {
 	f, _ := strconv.ParseFloat(val, 64)
 	return f
@@ -221,7 +235,7 @@ func getEntities(w *wallbox.Wallbox) map[string]Entity {
 		},
 		"temp_l1": {
 			Component: "sensor",
-			Getter:    func() string { return fmt.Sprint(w.TemperatureL1()) },
+			Getter:    func() string { return readingPayload(w.TemperatureReading(0)) },
 			RateLimit: ratelimit.NewDeltaRateLimit(10, 0.5),
 			Config: map[string]string{
 				"name":                        "Temperature Line 1",
@@ -234,7 +248,7 @@ func getEntities(w *wallbox.Wallbox) map[string]Entity {
 		},
 		"temp_l2": {
 			Component: "sensor",
-			Getter:    func() string { return fmt.Sprint(w.TemperatureL2()) },
+			Getter:    func() string { return readingPayload(w.TemperatureReading(1)) },
 			RateLimit: ratelimit.NewDeltaRateLimit(10, 0.5),
 			Config: map[string]string{
 				"name":                        "Temperature Line 2",
@@ -247,7 +261,7 @@ func getEntities(w *wallbox.Wallbox) map[string]Entity {
 		},
 		"temp_l3": {
 			Component: "sensor",
-			Getter:    func() string { return fmt.Sprint(w.TemperatureL3()) },
+			Getter:    func() string { return readingPayload(w.TemperatureReading(2)) },
 			RateLimit: ratelimit.NewDeltaRateLimit(10, 0.5),
 			Config: map[string]string{
 				"name":                        "Temperature Line 3",
@@ -260,7 +274,7 @@ func getEntities(w *wallbox.Wallbox) map[string]Entity {
 		},
 		"voltage_l1": {
 			Component: "sensor",
-			Getter:    func() string { return fmt.Sprint(w.VoltageL1()) },
+			Getter:    func() string { return readingPayload(w.VoltageReading(0)) },
 			RateLimit: ratelimit.NewDeltaRateLimit(10, 2),
 			Config: map[string]string{
 				"name":                        "Voltage Line 1",
@@ -273,7 +287,7 @@ func getEntities(w *wallbox.Wallbox) map[string]Entity {
 		},
 		"voltage_l2": {
 			Component: "sensor",
-			Getter:    func() string { return fmt.Sprint(w.VoltageL2()) },
+			Getter:    func() string { return readingPayload(w.VoltageReading(1)) },
 			RateLimit: ratelimit.NewDeltaRateLimit(10, 2),
 			Config: map[string]string{
 				"name":                        "Voltage Line 2",
@@ -286,7 +300,7 @@ func getEntities(w *wallbox.Wallbox) map[string]Entity {
 		},
 		"voltage_l3": {
 			Component: "sensor",
-			Getter:    func() string { return fmt.Sprint(w.VoltageL3()) },
+			Getter:    func() string { return readingPayload(w.VoltageReading(2)) },
 			RateLimit: ratelimit.NewDeltaRateLimit(10, 2),
 			Config: map[string]string{
 				"name":                        "Voltage Line 3",
@@ -376,7 +390,7 @@ func getPowerBoostEntities(w *wallbox.Wallbox) map[string]Entity {
 		},
 		"power_boost_voltage_l1": {
 			Component: "sensor",
-			Getter:    func() string { return fmt.Sprint(w.PowerBoostVoltageL1()) },
+			Getter:    func() string { return readingPayload(w.PowerBoostVoltageReading(0)) },
 			RateLimit: ratelimit.NewDeltaRateLimit(10, 2),
 			Config: map[string]string{
 				"name":                        "Power Boost voltage L1",
@@ -389,7 +403,7 @@ func getPowerBoostEntities(w *wallbox.Wallbox) map[string]Entity {
 		},
 		"power_boost_voltage_l2": {
 			Component: "sensor",
-			Getter:    func() string { return fmt.Sprint(w.PowerBoostVoltageL2()) },
+			Getter:    func() string { return readingPayload(w.PowerBoostVoltageReading(1)) },
 			RateLimit: ratelimit.NewDeltaRateLimit(10, 2),
 			Config: map[string]string{
 				"name":                        "Power Boost voltage L2",
@@ -402,7 +416,7 @@ func getPowerBoostEntities(w *wallbox.Wallbox) map[string]Entity {
 		},
 		"power_boost_voltage_l3": {
 			Component: "sensor",
-			Getter:    func() string { return fmt.Sprint(w.PowerBoostVoltageL3()) },
+			Getter:    func() string { return readingPayload(w.PowerBoostVoltageReading(2)) },
 			RateLimit: ratelimit.NewDeltaRateLimit(10, 2),
 			Config: map[string]string{
 				"name":                        "Power Boost voltage L3",
