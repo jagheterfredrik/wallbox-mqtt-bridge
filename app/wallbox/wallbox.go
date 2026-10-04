@@ -281,7 +281,7 @@ func (w *Wallbox) RefreshData() {
 		"  `wallbox_config`.`halo_brightness`," +
 		"  (SELECT `charged_energy` FROM `power_outage_values` LIMIT 1) AS cumulative_added_energy," +
 		"  IF(`active_session`.`unique_id` != 0," +
-		"    `active_session`.`charged_range`," +
+		"    FLOOR(`active_session`.`charged_range`)," +
 		"    COALESCE(`latest_session`.`charged_range`, 0)) AS added_range," +
 		"  IF(`active_session`.`unique_id` != 0," +
 		"    `active_session`.`energy_total`," +
