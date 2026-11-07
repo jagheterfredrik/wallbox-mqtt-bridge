@@ -39,6 +39,42 @@ This open-source project connects your Wallbox charger fully locally to Home Ass
 | Max charging current | number (6 A – max) | ✓ |
 | Halo brightness | number (0–100 %) | ✓ |
 
+### Charging schedules
+
+The charger exposes a fixed set of 4 schedule slots. Entities are created for every slot (1–4). There is no true create/delete: a slot is "created" by enabling it with values, and "deleted"/parked by disabling it. All schedule writes are applied live and persisted by the charger's own `schedule_manager` (via a Redis command), and the entity states are read back from the charger every poll, so changes made in the Wallbox app are reflected too.
+
+Per slot (`N` = 1–4):
+
+| Entity | Type | Writable | Notes |
+|---|---|---|---|
+| Schedule N Enable | switch | ✓ | Turn the slot on/off |
+| Schedule N Start | time | ✓ | Local wall-clock start (HH:MM). **Create-on-entry:** if the slot is currently off, setting the start auto-fills stop = start + 1 min (wraps midnight), enables all 7 days and turns the slot on. If the slot is already on, only the start changes. |
+| Schedule N Stop | time | ✓ | Local wall-clock stop (HH:MM) |
+| Schedule N — 1 Monday … 7 Sunday | switch (×7) | ✓ | One per weekday (`config` category); named with a 1–7 prefix so they sort Mon→Sun |
+| Schedule N Delete | button | ✓ | Parks the slot (sets enable off); keeps the other fields |
+
+Times are **local wall-clock** values — no timezone conversion (e.g. `09:00` → 0900, `22:05` → 2205). Max charging current is not per-slot; the slots use the charger's configured max (the existing **Max charging current** entity).
+
+#### Atomic `set_schedule` command (for automations)
+
+A single **Set schedule** `text` entity accepts a JSON payload that fully specifies one slot in one write — handy for Home Assistant automations:
+
+```json
+{"slot":1,"enable":true,"start":"2029","stop":"2100","days":["mon","tue","wed","thu","fri"],"max_current":-1,"name":""}
+```
+
+| Field | Required | Format / default |
+|---|---|---|
+| `slot` | yes | 1–4 |
+| `start` | yes | `"HHMM"` or `"HH:MM"` (local) |
+| `stop` | yes | `"HHMM"` or `"HH:MM"` (local) |
+| `days` | yes | list of `mon`..`sun` (case-insensitive) and/or keywords `all`, `weekdays`, `weekends`, `none` |
+| `enable` | no | defaults to `true` |
+| `max_current` | no | defaults to `-1` (use the charger's configured max) |
+| `name` | no | defaults to the slot's current name |
+
+Malformed JSON, an out-of-range slot, a bad time, or an unrecognised day is logged as a warning and ignored — no command is sent.
+
 ### Power Boost (optional, `power_boost_enabled = true`)
 
 | Entity | Type |

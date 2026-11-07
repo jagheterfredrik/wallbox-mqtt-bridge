@@ -58,6 +58,7 @@ func RunBridge(configPath string) {
 	}
 
 	entityConfig := getEntities(w)
+	maps.Copy(entityConfig, getScheduleEntities(w))
 	if c.Settings.DebugSensors {
 		maps.Copy(entityConfig, getDebugEntities(w))
 	}
