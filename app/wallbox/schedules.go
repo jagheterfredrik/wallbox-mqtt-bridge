@@ -34,7 +34,18 @@ type ScheduleRow struct {
 	// uses it to pick CMD_CREATE_SCHEDULE over CMD_UPDATE_SCHEDULE, which
 	// schedule_manager rejects for a schedule_id with no row. Not a column.
 	Exists bool `db:"-"`
+	// UpdatedAt is set by publishScheduleUpdate when it writes this row into
+	// the cache. RefreshData keeps a cached row whose ULID MySQL hasn't
+	// caught up with yet (see scheduleWriteGracePeriod). Not a column.
+	UpdatedAt time.Time `db:"-"`
 }
+
+// scheduleWriteGracePeriod is how long RefreshData prefers a just-written
+// cached schedule row over the MySQL read while schedule_manager is still
+// persisting the command. schedule_manager commits within milliseconds, so
+// 3s is a generous upper bound; after it expires the MySQL state wins even
+// if the write was lost.
+const scheduleWriteGracePeriod = 3 * time.Second
 
 // scheduleSelectQuery reads the schedules table. stop_time and name are
 // nullable in the schema, so they are COALESCEd to keep sqlx scans from
@@ -288,12 +299,17 @@ func (w *Wallbox) publishScheduleUpdate(s ScheduleRow) {
 	// the pre-write state and clobber this change.
 	s.Ulid = cmd.Body.Schedule.Ulid
 	s.Exists = true
+	s.UpdatedAt = time.Now()
 	w.dataMu.Lock()
 	if w.Data.Schedules == nil {
 		w.Data.Schedules = make(map[int]ScheduleRow)
 	}
 	w.Data.Schedules[s.ScheduleID] = s
 	w.dataMu.Unlock()
+
+	// Push the new state to MQTT now instead of waiting for the next poll
+	// tick (or the next pub/sub event) to call publishChanged.
+	w.notifyUpdate()
 }
 
 // SetScheduleEnable turns a slot on/off, preserving all its other fields.
@@ -308,18 +324,22 @@ func (w *Wallbox) SetScheduleEnable(slot int, enable bool) {
 }
 
 // SetScheduleStart sets a slot's start_time. Create-on-entry: if the slot is
-// currently disabled/empty, setting the start also fills stop_time with
-// start+1min (wrapping midnight), enables all 7 days and sets enable=true, so
-// typing a start time "creates" the schedule. If the slot is already enabled,
-// only start_time changes.
+// unconfigured (no MySQL row, or no times set yet), setting the start also
+// fills stop_time with start+1min (wrapping midnight), enables all 7 days and
+// sets enable=true, so typing a start time "creates" the schedule. An
+// existing slot that is merely disabled keeps its stop_time, days and
+// enable=false — otherwise editing the start of a parked schedule would
+// wipe its configuration. If the slot is already enabled, only start_time
+// changes.
 func (w *Wallbox) SetScheduleStart(slot, hhmm int) {
 	s, ok := w.scheduleBySlot(slot)
 	if !ok {
 		fmt.Println("Warning: SetScheduleStart: unknown schedule slot", slot)
 		return
 	}
+	unconfigured := !s.Exists || (s.StartTime == 0 && s.StopTime == 0)
 	s.StartTime = hhmm
-	if !s.Enable {
+	if !s.Enable && unconfigured {
 		s.StopTime = addOneMinuteWrap(hhmm)
 		s.Monday = true
 		s.Tuesday = true

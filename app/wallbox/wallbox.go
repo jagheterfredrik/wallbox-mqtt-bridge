@@ -339,6 +339,20 @@ func (w *Wallbox) RefreshData() {
 				schedules[slot] = ScheduleRow{ScheduleID: slot}
 			}
 		}
+		// publishScheduleUpdate caches each write immediately, but
+		// schedule_manager persists it to MySQL asynchronously. If this poll
+		// ran before the commit, the MySQL row still has the pre-write state
+		// (and Exists=false for a just-created slot); installing it would
+		// make the next setter read-modify-write on stale data and revert the
+		// change. Keep the cached row while its ULID differs from MySQL's —
+		// schedule_manager stores the ULID we generated, so once they match
+		// MySQL has caught up and its row wins.
+		for slot, cached := range w.Data.Schedules {
+			fresh, ok := schedules[slot]
+			if ok && cached.Ulid != fresh.Ulid && time.Since(cached.UpdatedAt) < scheduleWriteGracePeriod {
+				schedules[slot] = cached
+			}
+		}
 		w.Data.Schedules = schedules
 	}
 }
