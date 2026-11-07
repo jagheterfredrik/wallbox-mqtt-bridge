@@ -110,7 +110,6 @@ func RunBridge(configPath string) {
 			config := map[string]any{
 				"~":                  topicPrefix + "/" + key,
 				"availability_topic": availabilityTopic,
-				"state_topic":        "~/state",
 				"unique_id":          uid,
 				"device": map[string]string{
 					"identifiers":  serialNumber,
@@ -119,6 +118,11 @@ func RunBridge(configPath string) {
 					"manufacturer": "Wallbox",
 					"sw_version":   firmwareVersion,
 				},
+			}
+			// Button entities have no state; HA's button discovery schema
+			// rejects state_topic and logs a config warning.
+			if component != "button" {
+				config["state_topic"] = "~/state"
 			}
 			if val.Setter != nil {
 				config["command_topic"] = "~/set"
