@@ -34,6 +34,7 @@ func RunBridge(configPath string) {
 
 	w := wallbox.New()
 	w.IncludePowerBoost = c.Settings.PowerBoostEnabled
+	w.IncludeSchedules = c.Settings.SchedulesEnabled
 
 	w.RefreshData()
 
@@ -58,7 +59,9 @@ func RunBridge(configPath string) {
 	}
 
 	entityConfig := getEntities(w)
-	maps.Copy(entityConfig, getScheduleEntities(w))
+	if c.Settings.SchedulesEnabled {
+		maps.Copy(entityConfig, getScheduleEntities(w))
+	}
 	if c.Settings.DebugSensors {
 		maps.Copy(entityConfig, getDebugEntities(w))
 	}

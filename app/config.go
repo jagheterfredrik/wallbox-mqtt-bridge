@@ -21,6 +21,7 @@ type WallboxConfig struct {
 		DeviceName             string `ini:"device_name"`
 		DebugSensors           bool   `ini:"debug_sensors"`
 		PowerBoostEnabled      bool   `ini:"power_boost_enabled"`
+		SchedulesEnabled       bool   `ini:"schedules_enabled"`
 	} `ini:"settings"`
 }
 
