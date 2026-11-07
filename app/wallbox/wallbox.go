@@ -3,6 +3,8 @@ package wallbox
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -373,7 +375,7 @@ func (w *Wallbox) ReadSchedules() []ScheduleRow {
 // scheduleBySlot returns the current ScheduleRow for the given slot (1..4),
 // reading the latest state from MySQL. The bool is false when the slot cannot
 // be read, so callers can fail safe rather than publish a command built from
-// zero values (which would blank the ulid).
+// zero values.
 func (w *Wallbox) scheduleBySlot(slot int) (ScheduleRow, bool) {
 	for _, r := range w.ReadSchedules() {
 		if r.ScheduleID == slot {
@@ -471,18 +473,64 @@ type scheduleUpdateCommand struct {
 	} `json:"header"`
 }
 
+// ulidAlphabet is the Crockford Base32 alphabet used by ULIDs.
+const ulidAlphabet = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
+
+// newULID returns a fresh ULID: 48-bit millisecond timestamp + 80 bits of
+// crypto randomness, encoded as 26 Crockford Base32 chars. The schedule_manager
+// treats the ulid as the schedule's version token — the app, cloud sync and
+// other consumers key off it, so every CMD_UPDATE_SCHEDULE must carry a NEW
+// ulid or the change is deduplicated as already-seen (this is why time edits
+// used to look like they did nothing until the slot was toggled). The Wallbox
+// app itself generates a fresh ulid on every schedule edit.
+func newULID() string {
+	var b [10]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		// crypto/rand failure is effectively unreachable; fall back to a
+		// time-derived value so we still emit a well-formed ULID.
+		binary.BigEndian.PutUint64(b[:8], uint64(time.Now().UnixNano()))
+	}
+
+	ms := uint64(time.Now().UnixMilli())
+	var out [26]byte
+	for i := 9; i >= 0; i-- {
+		out[i] = ulidAlphabet[ms&0x1F]
+		ms >>= 5
+	}
+
+	// 80 random bits -> 16 chars of 5 bits each, MSB-first.
+	var acc uint64
+	var nbits uint
+	idx := 10
+	for _, by := range b {
+		acc = (acc << 8) | uint64(by)
+		nbits += 8
+		for nbits >= 5 {
+			nbits -= 5
+			out[idx] = ulidAlphabet[(acc>>nbits)&0x1F]
+			idx++
+		}
+	}
+	for idx < 26 {
+		out[idx] = ulidAlphabet[0]
+		idx++
+	}
+	return string(out[:])
+}
+
 // publishScheduleUpdate marshals a CMD_UPDATE_SCHEDULE command from the given
 // row and publishes it on /wbx/schedule_manager/cmd. The firmware applies it
 // live and persists it to MySQL, so this is the ONLY write path for schedules
-// (the schedules table is never written directly). The row's existing ulid and
-// schedule_id are preserved verbatim; max_current of 0 is normalised to -1
-// ("use the charger's configured max"). type is sent as the captured string
-// "Regular" and enabled_days as an empty array (the manager derives days from
-// the per-day booleans).
+// (the schedules table is never written directly). A FRESH ulid is generated
+// for every update — reusing the stored one makes consumers treat the change
+// as a duplicate. max_current of 0 is normalised to -1 ("use the charger's
+// configured max"). type is sent as the captured string "Regular" and
+// enabled_days as an empty array (the manager derives days from the per-day
+// booleans).
 func (w *Wallbox) publishScheduleUpdate(s ScheduleRow) {
 	var cmd scheduleUpdateCommand
 	cmd.Body.Schedule.ScheduleID = s.ScheduleID
-	cmd.Body.Schedule.Ulid = s.Ulid
+	cmd.Body.Schedule.Ulid = newULID()
 	cmd.Body.Schedule.Enable = s.Enable
 	cmd.Body.Schedule.Monday = s.Monday
 	cmd.Body.Schedule.Tuesday = s.Tuesday
@@ -605,7 +653,7 @@ func (w *Wallbox) SetScheduleDay(slot, dayIndex int, on bool) {
 
 // ParkSchedule "deletes" a slot by setting enable=false. The charger has no
 // true delete; parking a schedule is just disabling it while keeping its
-// fields (and ulid) intact.
+// fields intact.
 func (w *Wallbox) ParkSchedule(slot int) {
 	s, ok := w.scheduleBySlot(slot)
 	if !ok {
@@ -670,9 +718,8 @@ func daysFromList(days []string) (mon, tue, wed, thu, fri, sat, sun bool, ok boo
 }
 
 // SetScheduleJSON applies an atomic set_schedule command for one slot. It
-// parses the JSON payload, builds a complete ScheduleRow (preserving the
-// slot's existing ulid via a read-modify-write) and publishes one
-// CMD_UPDATE_SCHEDULE. On malformed JSON or a bad slot it logs a warning and
+// parses the JSON payload, builds a complete ScheduleRow via a
+// read-modify-write and publishes one CMD_UPDATE_SCHEDULE (with a fresh ulid). On malformed JSON or a bad slot it logs a warning and
 // does nothing, so a bad command is never published.
 func (w *Wallbox) SetScheduleJSON(payload string) {
 	var p scheduleJSONPayload
