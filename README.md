@@ -39,7 +39,7 @@ This open-source project connects your Wallbox charger fully locally to Home Ass
 | Max charging current | number (6 A – max) | ✓ |
 | Halo brightness | number (0–100 %) | ✓ |
 
-### Charging schedules
+### Charging schedules (optional, `schedules_enabled = true`)
 
 The charger exposes a fixed set of 4 schedule slots. Entities are created for every slot (1–4). There is no true create/delete: a slot is "created" by enabling it with values, and "deleted"/parked by disabling it. All schedule writes are applied live and persisted by the charger's own `schedule_manager` (via a Redis command), and the entity states are read back from the charger every poll, so changes made in the Wallbox app are reflected too.
 
@@ -133,6 +133,7 @@ polling_interval_seconds = 1
 device_name              = Wallbox
 debug_sensors            = false
 power_boost_enabled      = false
+schedules_enabled        = false
 ```
 
 ### MQTT topic layout

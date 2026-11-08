@@ -136,11 +136,11 @@ type Wallbox struct {
 	// false the schedules query is skipped entirely (no per-poll MySQL load)
 	// and Data.Schedules stays nil.
 	IncludeSchedules bool
-	mu                sync.RWMutex // Protects PubSub, HasSensorData, HasMeterData, and the Has*Data granular flags
-	dataMu            sync.RWMutex // Protects Data, HasStateHash, HasM2WHash
-	PubSub            PubSubData
-	HasSensorData     bool // true once EVENT_SENSORS_MEASURED received on /wbx/telemetry/events
-	HasMeterData      bool // true once EVENT_FIRMWARE_AND_METER_READINGS received on /wbx/micro2wallbox/events
+	mu               sync.RWMutex // Protects PubSub, HasSensorData, HasMeterData, and the Has*Data granular flags
+	dataMu           sync.RWMutex // Protects Data, HasStateHash, HasM2WHash
+	PubSub           PubSubData
+	HasSensorData    bool // true once EVENT_SENSORS_MEASURED received on /wbx/telemetry/events
+	HasMeterData     bool // true once EVENT_FIRMWARE_AND_METER_READINGS received on /wbx/micro2wallbox/events
 
 	// Granular flags set only when the *specific* sensor IDs for each measurement
 	// group are actually received in a telemetry event. Pre-6.6 firmware may emit
