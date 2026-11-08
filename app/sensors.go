@@ -8,10 +8,10 @@ import (
 	"github.com/jagheterfredrik/wallbox-mqtt-bridge/app/wallbox"
 )
 
-// maxChargingCurrentMin is the minimum allowed value for the max_charging_current
-// entity, used both as its MQTT discovery "min" and as the floor passed to
-// availableCurrentOrDefault.
-const maxChargingCurrentMin = 6
+const (
+	minChargingCurrent      = 6
+	defaultAvailableCurrent = 32
+)
 
 type Entity struct {
 	Component string
@@ -31,16 +31,15 @@ func strToFloat(val string) float64 {
 	return f
 }
 
-// availableCurrentOrDefault returns the real available current, falling back
-// to fallback whenever the reported value is below minCurrent (e.g. unknown/0),
-// since a max lower than min would make the MQTT discovery config invalid.
-func availableCurrentOrDefault(w *wallbox.Wallbox, minCurrent, fallback int) int {
+// Some chargers report 0 for available current, which makes Home Assistant
+// reject the discovery config because max < min.
+func availableCurrentOrDefault(w *wallbox.Wallbox) int {
 	v := w.AvailableCurrent()
-	if v >= minCurrent {
+	if v >= minChargingCurrent {
 		return v
 	}
-	fmt.Println("Warning: reported available current", v, "is below minimum", minCurrent, "— falling back to", fallback)
-	return fallback
+	fmt.Println("Warning: reported available current", v, "is below minimum", minChargingCurrent, "- falling back to", defaultAvailableCurrent)
+	return defaultAvailableCurrent
 }
 
 func getEntities(w *wallbox.Wallbox) map[string]Entity {
@@ -221,8 +220,8 @@ func getEntities(w *wallbox.Wallbox) map[string]Entity {
 			Config: map[string]string{
 				"name":                "Max charging current",
 				"command_topic":       "~/set",
-				"min":                 fmt.Sprint(maxChargingCurrentMin),
-				"max":                 fmt.Sprint(availableCurrentOrDefault(w, maxChargingCurrentMin, 32)),
+				"min":                 fmt.Sprint(minChargingCurrent),
+				"max":                 fmt.Sprint(availableCurrentOrDefault(w)),
 				"unit_of_measurement": "A",
 				"device_class":        "current",
 				"entity_category":     "config",
