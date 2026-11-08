@@ -8,6 +8,11 @@ import (
 	"github.com/jagheterfredrik/wallbox-mqtt-bridge/app/wallbox"
 )
 
+const (
+	minChargingCurrent      = 6
+	defaultAvailableCurrent = 32
+)
+
 type Entity struct {
 	Component string
 	Getter    func() string
@@ -38,6 +43,17 @@ func readingPayload(v float64, state wallbox.ReadingState) string {
 func strToFloat(val string) float64 {
 	f, _ := strconv.ParseFloat(val, 64)
 	return f
+}
+
+// Some chargers report 0 for available current, which makes Home Assistant
+// reject the discovery config because max < min.
+func availableCurrentOrDefault(w *wallbox.Wallbox) int {
+	v := w.AvailableCurrent()
+	if v >= minChargingCurrent {
+		return v
+	}
+	fmt.Println("Warning: reported available current", v, "is below minimum", minChargingCurrent, "- falling back to", defaultAvailableCurrent)
+	return defaultAvailableCurrent
 }
 
 func getEntities(w *wallbox.Wallbox) map[string]Entity {
@@ -218,8 +234,8 @@ func getEntities(w *wallbox.Wallbox) map[string]Entity {
 			Config: map[string]string{
 				"name":                "Max charging current",
 				"command_topic":       "~/set",
-				"min":                 "6",
-				"max":                 fmt.Sprint(w.AvailableCurrent()),
+				"min":                 fmt.Sprint(minChargingCurrent),
+				"max":                 fmt.Sprint(availableCurrentOrDefault(w)),
 				"unit_of_measurement": "A",
 				"device_class":        "current",
 				"entity_category":     "config",
