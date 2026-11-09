@@ -43,6 +43,8 @@ This open-source project connects your Wallbox charger fully locally to Home Ass
 
 The charger exposes a fixed set of 4 schedule slots. Entities are created for every slot (1–4). There is no true create/delete: a slot is "created" by enabling it with values, and "deleted"/parked by disabling it. All schedule writes are applied live and persisted by the charger's own `schedule_manager` (via a Redis command), and the entity states are read back from the charger every poll, so changes made in the Wallbox app are reflected too.
 
+To keep the device page uncluttered, **all entities for slots 2–4 are disabled by default** in Home Assistant (`enabled_by_default: false`) — that includes the enable switch, start/stop times and all 7 weekday switches. If you need an extra slot, enable its entities under **Settings → Devices & Services → Wallbox → Entities** (filter by "disabled"), then configure it like slot 1. Slot 1 is fully enabled out of the box.
+
 Per slot (`N` = 1–4):
 
 | Entity | Type | Writable | Notes |
@@ -51,7 +53,8 @@ Per slot (`N` = 1–4):
 | Schedule N Start | time | ✓ | Local wall-clock start (HH:MM). **Create-on-entry:** if the slot is currently off, setting the start auto-fills stop = start + 1 min (wraps midnight), enables all 7 days and turns the slot on. If the slot is already on, only the start changes. |
 | Schedule N Stop | time | ✓ | Local wall-clock stop (HH:MM) |
 | Schedule N — 1 Monday … 7 Sunday | switch (×7) | ✓ | One per weekday (`config` category); named with a 1–7 prefix so they sort Mon→Sun |
-| Schedule N Delete | button | ✓ | Parks the slot (sets enable off); keeps the other fields |
+
+There is no separate delete button — turning **Schedule N Enable** off parks the slot (the charger has no true delete; all other fields are kept).
 
 Times are **local wall-clock** values — no timezone conversion (e.g. `09:00` → 0900, `22:05` → 2205). Max charging current is not per-slot; the slots use the charger's configured max (the existing **Max charging current** entity).
 
@@ -74,6 +77,24 @@ A single **Set schedule** `text` entity accepts a JSON payload that fully specif
 | `name` | no | defaults to the slot's current name |
 
 Malformed JSON, an out-of-range slot, a bad time, or an unrecognised day is logged as a warning and ignored — no command is sent.
+
+The entity lives in the device's **Configuration** section (`entity_category: config`) so it stays out of the main controls card, and its entity ID is `text.set_schedule` (verify under the entity's settings). Example automation:
+
+```yaml
+automation:
+  - alias: Weekday charging schedule
+    trigger:
+      - platform: time
+        at: "06:00:00"
+    action:
+      - service: text.set_value
+        target:
+          entity_id: text.set_schedule
+        data:
+          value: '{"slot":1,"enable":true,"start":"06:30","stop":"09:00","days":["weekdays"]}'
+```
+
+Individual slots can also be driven from automations without JSON via the per-slot entities (e.g. `switch.schedule_1_enable`, `time.schedule_1_start` — check the entity IDs under the device page).
 
 ### Power Boost (optional, `power_boost_enabled = true`)
 

@@ -14,6 +14,17 @@ func boolIntToStr(b bool) string {
 	return "0"
 }
 
+// slotConfig returns the discovery config for a slot's entities. Schedules
+// 2-4 are disabled by default in Home Assistant to keep the device page
+// uncluttered; users enable the entities they need under the device's
+// Entities page. Schedule 1 stays enabled.
+func slotConfig(slot int, cfg map[string]string) map[string]string {
+	if slot > 1 {
+		cfg["enabled_by_default"] = "false"
+	}
+	return cfg
+}
+
 // scheduleDayNames names the 7 weekday switches so Home Assistant's name-sort
 // shows Monday->Sunday: each name is prefixed with its 1..7 index.
 var scheduleDayNames = [7]struct {
@@ -52,12 +63,12 @@ func getScheduleEntities(w *wallbox.Wallbox) map[string]Entity {
 				}
 				return boolIntToStr(s.Enable)
 			},
-			Config: map[string]string{
+			Config: slotConfig(slot, map[string]string{
 				"name":        prefix + " Enable",
 				"payload_on":  "1",
 				"payload_off": "0",
 				"icon":        "mdi:calendar-clock",
-			},
+			}),
 		}
 
 		// 2. Start time.
@@ -77,10 +88,10 @@ func getScheduleEntities(w *wallbox.Wallbox) map[string]Entity {
 				}
 				return wallbox.HHMMIntToClock(s.StartTime) + ":00"
 			},
-			Config: map[string]string{
+			Config: slotConfig(slot, map[string]string{
 				"name": prefix + " Start",
 				"icon": "mdi:clock-start",
-			},
+			}),
 		}
 
 		// 3. Stop time.
@@ -100,10 +111,10 @@ func getScheduleEntities(w *wallbox.Wallbox) map[string]Entity {
 				}
 				return wallbox.HHMMIntToClock(s.StopTime) + ":00"
 			},
-			Config: map[string]string{
+			Config: slotConfig(slot, map[string]string{
 				"name": prefix + " Stop",
 				"icon": "mdi:clock-end",
-			},
+			}),
 		}
 
 		// 4. Seven day switches (Monday..Sunday).
@@ -121,38 +132,28 @@ func getScheduleEntities(w *wallbox.Wallbox) map[string]Entity {
 					days := [7]bool{s.Monday, s.Tuesday, s.Wednesday, s.Thursday, s.Friday, s.Saturday, s.Sunday}
 					return boolIntToStr(days[dayIndex-1])
 				},
-				Config: map[string]string{
+				Config: slotConfig(slot, map[string]string{
 					"name":            prefix + " — " + day.label,
 					"payload_on":      "1",
 					"payload_off":     "0",
 					"icon":            "mdi:calendar-today",
 					"entity_category": "config",
-				},
+				}),
 			}
-		}
-
-		// 5. Delete/park button. Parking = enable false (there is no true delete).
-		entities[fmt.Sprintf("schedule_%d_delete", slot)] = Entity{
-			Component: "button",
-			Setter:    func(string) { w.ParkSchedule(slot) },
-			Getter:    func() string { return "" },
-			Config: map[string]string{
-				"name": prefix + " Delete",
-				"icon": "mdi:calendar-remove",
-			},
 		}
 	}
 
-	// 6. Atomic set_schedule JSON command. Its state is the last accepted
+	// 5. Atomic set_schedule JSON command. Its state is the last accepted
 	// payload, so the text entity shows what was last set.
 	entities["set_schedule"] = Entity{
 		Component: "text",
 		Setter:    func(val string) { w.SetScheduleJSON(val) },
 		Getter:    func() string { return w.LastScheduleJSON() },
 		Config: map[string]string{
-			"name": "Set schedule",
-			"icon": "mdi:calendar-edit",
-			"mode": "text",
+			"name":            "Set schedule",
+			"icon":            "mdi:calendar-edit",
+			"mode":            "text",
+			"entity_category": "config",
 		},
 	}
 

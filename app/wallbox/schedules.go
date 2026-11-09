@@ -394,19 +394,6 @@ func (w *Wallbox) SetScheduleDay(slot, dayIndex int, on bool) {
 	w.publishScheduleUpdate(s)
 }
 
-// ParkSchedule "deletes" a slot by setting enable=false. The charger has no
-// true delete; parking a schedule is just disabling it while keeping its
-// fields intact.
-func (w *Wallbox) ParkSchedule(slot int) {
-	s, ok := w.scheduleBySlot(slot)
-	if !ok {
-		fmt.Println("Warning: ParkSchedule: unknown schedule slot", slot)
-		return
-	}
-	s.Enable = false
-	w.publishScheduleUpdate(s)
-}
-
 // scheduleJSONPayload is the atomic set_schedule command accepted on the
 // set_schedule text entity. start/stop accept "HHMM" or "HH:MM"; days accepts
 // a list of mon..sun and/or the keywords all/weekdays/weekends/none.
