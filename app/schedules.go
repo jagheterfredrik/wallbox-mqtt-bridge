@@ -41,10 +41,12 @@ var scheduleDayNames = [7]struct {
 }
 
 // getScheduleEntities builds the per-slot charging schedule entities for all 4
-// fixed slots, plus one atomic set_schedule JSON command entity. All writes go
-// through the schedule_manager Redis command (CMD_UPDATE_SCHEDULE /
-// CMD_CREATE_SCHEDULE); the getters read the cache filled by RefreshData so
-// entities reflect the charger's real current schedule.
+// fixed slots. All writes go through the schedule_manager Redis command
+// (CMD_UPDATE_SCHEDULE / CMD_CREATE_SCHEDULE); the getters read the cache
+// filled by RefreshData so entities reflect the charger's real current
+// schedule. The atomic set_schedule JSON command is handled as a plain MQTT
+// command topic (wallbox_<serial>/set_schedule/set) in bridge.go, not as an
+// entity.
 func getScheduleEntities(w *wallbox.Wallbox) map[string]Entity {
 	entities := make(map[string]Entity)
 
@@ -141,20 +143,6 @@ func getScheduleEntities(w *wallbox.Wallbox) map[string]Entity {
 				}),
 			}
 		}
-	}
-
-	// 5. Atomic set_schedule JSON command. Its state is the last accepted
-	// payload, so the text entity shows what was last set.
-	entities["set_schedule"] = Entity{
-		Component: "text",
-		Setter:    func(val string) { w.SetScheduleJSON(val) },
-		Getter:    func() string { return w.LastScheduleJSON() },
-		Config: map[string]string{
-			"name":            "Set schedule",
-			"icon":            "mdi:calendar-edit",
-			"mode":            "text",
-			"entity_category": "config",
-		},
 	}
 
 	return entities

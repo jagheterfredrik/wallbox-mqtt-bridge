@@ -7,6 +7,7 @@ import (
 	"maps"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -85,6 +86,14 @@ func RunBridge(configPath string) {
 			return
 		}
 		field := parts[1]
+		// set_schedule is a command-only topic (no HA entity): it takes the
+		// atomic JSON payload for one schedule slot.
+		if field == "set_schedule" && c.Settings.SchedulesEnabled {
+			payload := string(msg.Payload())
+			fmt.Println("Setting set_schedule", payload)
+			w.SetScheduleJSON(payload)
+			return
+		}
 		entity, ok := entityConfig[field]
 		if !ok || entity.Setter == nil {
 			// Ignore set commands for unknown or read-only entities.
@@ -135,6 +144,16 @@ func RunBridge(configPath string) {
 			}
 			jsonPayload, _ := json.Marshal(config)
 			client.Publish("homeassistant/"+component+"/"+uid+"/config", 1, true, jsonPayload)
+		}
+
+		// Clear retained discovery configs for the schedule delete buttons
+		// removed in this version so the stale entities disappear from Home
+		// Assistant. An empty retained payload removes the config.
+		if c.Settings.SchedulesEnabled {
+			for slot := 1; slot <= 4; slot++ {
+				topic := "homeassistant/button/" + serialNumber + "_schedule_" + strconv.Itoa(slot) + "_delete/config"
+				client.Publish(topic, 1, true, nil)
+			}
 		}
 
 		// Re-establish command topic subscriptions.

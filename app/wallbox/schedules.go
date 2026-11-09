@@ -313,6 +313,8 @@ func (w *Wallbox) publishScheduleUpdate(s ScheduleRow) {
 }
 
 // SetScheduleEnable turns a slot on/off, preserving all its other fields.
+// Enabling a slot that has no weekdays selected defaults all 7 days to on —
+// a schedule with zero days would silently never run.
 func (w *Wallbox) SetScheduleEnable(slot int, enable bool) {
 	s, ok := w.scheduleBySlot(slot)
 	if !ok {
@@ -320,17 +322,22 @@ func (w *Wallbox) SetScheduleEnable(slot int, enable bool) {
 		return
 	}
 	s.Enable = enable
+	if enable && !(s.Monday || s.Tuesday || s.Wednesday || s.Thursday || s.Friday || s.Saturday || s.Sunday) {
+		s.Monday = true
+		s.Tuesday = true
+		s.Wednesday = true
+		s.Thursday = true
+		s.Friday = true
+		s.Saturday = true
+		s.Sunday = true
+	}
 	w.publishScheduleUpdate(s)
 }
 
-// SetScheduleStart sets a slot's start_time. Create-on-entry: if the slot is
-// unconfigured (no MySQL row, or no times set yet), setting the start also
-// fills stop_time with start+1min (wrapping midnight), enables all 7 days and
-// sets enable=true, so typing a start time "creates" the schedule. An
-// existing slot that is merely disabled keeps its stop_time, days and
-// enable=false — otherwise editing the start of a parked schedule would
-// wipe its configuration. If the slot is already enabled, only start_time
-// changes.
+// SetScheduleStart sets a slot's start_time. Setting the start never enables
+// the schedule. For an unconfigured slot (no MySQL row, or no times set yet)
+// it also fills stop_time with start+1min (wrapping midnight) so the slot
+// stays valid once enabled; enable and the weekdays are left untouched.
 func (w *Wallbox) SetScheduleStart(slot, hhmm int) {
 	s, ok := w.scheduleBySlot(slot)
 	if !ok {
@@ -339,16 +346,8 @@ func (w *Wallbox) SetScheduleStart(slot, hhmm int) {
 	}
 	unconfigured := !s.Exists || (s.StartTime == 0 && s.StopTime == 0)
 	s.StartTime = hhmm
-	if !s.Enable && unconfigured {
+	if unconfigured {
 		s.StopTime = addOneMinuteWrap(hhmm)
-		s.Monday = true
-		s.Tuesday = true
-		s.Wednesday = true
-		s.Thursday = true
-		s.Friday = true
-		s.Saturday = true
-		s.Sunday = true
-		s.Enable = true
 	}
 	w.publishScheduleUpdate(s)
 }
@@ -504,20 +503,6 @@ func (w *Wallbox) SetScheduleJSON(payload string) {
 	}
 
 	w.publishScheduleUpdate(s)
-
-	// Remember the accepted payload so the text entity has a real state
-	// instead of sitting at unknown forever.
-	w.scheduleMu.Lock()
-	w.lastScheduleJSON = payload
-	w.scheduleMu.Unlock()
-}
-
-// LastScheduleJSON returns the last set_schedule payload accepted by
-// SetScheduleJSON, published as the text entity's state.
-func (w *Wallbox) LastScheduleJSON() string {
-	w.scheduleMu.Lock()
-	defer w.scheduleMu.Unlock()
-	return w.lastScheduleJSON
 }
 
 // ScheduleSlot returns the cached ScheduleRow for a slot (1..4), used by the

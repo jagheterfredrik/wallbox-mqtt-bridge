@@ -60,11 +60,16 @@ Times are **local wall-clock** values — no timezone conversion (e.g. `09:00` �
 
 #### Atomic `set_schedule` command (for automations)
 
-A single **Set schedule** `text` entity accepts a JSON payload that fully specifies one slot in one write — handy for Home Assistant automations:
+For automations and scripts there is also an atomic `set_schedule` **MQTT command** — no HA entity, just publish a JSON payload to `wallbox_<serial>/set_schedule/set` that fully specifies one slot in a single write:
 
-```json
-{"slot":1,"enable":true,"start":"2029","stop":"2100","days":["mon","tue","wed","thu","fri"],"max_current":-1,"name":""}
+```yaml
+action: mqtt.publish
+data:
+  topic: wallbox_69DABC123456/set_schedule/set
+  payload: '{"slot":1,"enable":true,"start":"06:30","stop":"09:00","days":["weekdays"]}'
 ```
+
+Replace `wallbox_<serial>` with the bridge's topic prefix (shown in the broker and used by all entity topics).
 
 | Field | Required | Format / default |
 |---|---|---|
@@ -76,23 +81,7 @@ A single **Set schedule** `text` entity accepts a JSON payload that fully specif
 | `max_current` | no | defaults to `-1` (use the charger's configured max) |
 | `name` | no | defaults to the slot's current name |
 
-Malformed JSON, an out-of-range slot, a bad time, or an unrecognised day is logged as a warning and ignored — no command is sent.
-
-The entity lives in the device's **Configuration** section (`entity_category: config`) so it stays out of the main controls card, and its entity ID is `text.set_schedule` (verify under the entity's settings). Example automation:
-
-```yaml
-automation:
-  - alias: Weekday charging schedule
-    trigger:
-      - platform: time
-        at: "06:00:00"
-    action:
-      - service: text.set_value
-        target:
-          entity_id: text.set_schedule
-        data:
-          value: '{"slot":1,"enable":true,"start":"06:30","stop":"09:00","days":["weekdays"]}'
-```
+Malformed JSON, an out-of-range slot, a bad time, or an unrecognised day is logged as a warning and ignored — no command is sent. The command is only handled when `schedules_enabled = true`.
 
 Individual slots can also be driven from automations without JSON via the per-slot entities (e.g. `switch.schedule_1_enable`, `time.schedule_1_start` — check the entity IDs under the device page).
 

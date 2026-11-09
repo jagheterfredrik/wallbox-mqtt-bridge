@@ -174,11 +174,8 @@ type Wallbox struct {
 
 	// scheduleReqCounter supplies a monotonically increasing suffix for the
 	// request_id of each schedule command (e.g. "MQTTBRIDGE#5").
-	// lastScheduleJSON is the last set_schedule payload accepted by
-	// SetScheduleJSON, exposed as the text entity's state.
-	// Both are guarded by scheduleMu.
+	// Guarded by scheduleMu.
 	scheduleReqCounter int
-	lastScheduleJSON   string
 	scheduleMu         sync.Mutex
 }
 
