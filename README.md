@@ -49,8 +49,8 @@ Per slot (`N` = 1–4):
 
 | Entity | Type | Writable | Notes |
 |---|---|---|---|
-| Schedule N Enable | switch | ✓ | Turn the slot on/off |
-| Schedule N Start | time | ✓ | Local wall-clock start (HH:MM). **Create-on-entry:** if the slot is currently off, setting the start auto-fills stop = start + 1 min (wraps midnight), enables all 7 days and turns the slot on. If the slot is already on, only the start changes. |
+| Schedule N Enable | switch | ✓ | Turn the slot on/off. Enabling a slot with no weekdays selected defaults all 7 days to on |
+| Schedule N Start | time | ✓ | Local wall-clock start (HH:MM). Only updates the start time — it never enables the slot. On a never-configured slot, stop defaults to start + 1 min (wraps midnight) |
 | Schedule N Stop | time | ✓ | Local wall-clock stop (HH:MM) |
 | Schedule N — 1 Monday … 7 Sunday | switch (×7) | ✓ | One per weekday (`config` category); named with a 1–7 prefix so they sort Mon→Sun |
 
