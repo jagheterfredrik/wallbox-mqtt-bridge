@@ -146,14 +146,16 @@ func RunBridge(configPath string) {
 			client.Publish("homeassistant/"+component+"/"+uid+"/config", 1, true, jsonPayload)
 		}
 
-		// Clear retained discovery configs for the schedule delete buttons
-		// removed in this version so the stale entities disappear from Home
-		// Assistant. An empty retained payload removes the config.
+		// Clear retained discovery configs for entities removed in this
+		// version so the stale entities disappear from Home Assistant: the
+		// schedule delete buttons and the set_schedule text entity (now a
+		// command-only topic). An empty retained payload removes the config.
 		if c.Settings.SchedulesEnabled {
 			for slot := 1; slot <= 4; slot++ {
 				topic := "homeassistant/button/" + serialNumber + "_schedule_" + strconv.Itoa(slot) + "_delete/config"
 				client.Publish(topic, 1, true, nil)
 			}
+			client.Publish("homeassistant/text/"+serialNumber+"_set_schedule/config", 1, true, nil)
 		}
 
 		// Re-establish command topic subscriptions.

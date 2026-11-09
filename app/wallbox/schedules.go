@@ -394,7 +394,8 @@ func (w *Wallbox) SetScheduleDay(slot, dayIndex int, on bool) {
 }
 
 // scheduleJSONPayload is the atomic set_schedule command accepted on the
-// set_schedule text entity. start/stop accept "HHMM" or "HH:MM"; days accepts
+// wallbox_<serial>/set_schedule/set MQTT topic. start/stop accept "HHMM" or
+// "HH:MM"; days accepts
 // a list of mon..sun and/or the keywords all/weekdays/weekends/none.
 type scheduleJSONPayload struct {
 	Slot       int      `json:"slot"`
