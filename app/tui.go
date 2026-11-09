@@ -48,6 +48,7 @@ func RunTuiSetup() {
 	config.Settings.DeviceName = "Wallbox"
 	config.Settings.DebugSensors = false
 	config.Settings.PowerBoostEnabled = false
+	config.Settings.SchedulesEnabled = false
 
 	askConfirmOrNew(&config.MQTT.Host, "MQTT Host")
 	askConfirmOrNewInt(&config.MQTT.Port, "MQTT Port")
@@ -57,6 +58,7 @@ func RunTuiSetup() {
 	askConfirmOrNew(&config.Settings.DeviceName, "Device name")
 	askConfirmOrNewBool(&config.Settings.DebugSensors, "Debug sensors")
 	askConfirmOrNewBool(&config.Settings.PowerBoostEnabled, "Enable Power Boost sensors")
+	askConfirmOrNewBool(&config.Settings.SchedulesEnabled, "Enable charging schedules")
 
 	config.SaveTo("bridge.ini")
 }

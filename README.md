@@ -39,6 +39,52 @@ This open-source project connects your Wallbox charger fully locally to Home Ass
 | Max charging current | number (6 A – max) | ✓ |
 | Halo brightness | number (0–100 %) | ✓ |
 
+### Charging schedules (optional, `schedules_enabled = true`)
+
+The charger exposes a fixed set of 4 schedule slots. Entities are created for every slot (1–4). There is no true create/delete: a slot is "created" by enabling it with values, and "deleted"/parked by disabling it. All schedule writes are applied live and persisted by the charger's own `schedule_manager` (via a Redis command), and the entity states are read back from the charger every poll, so changes made in the Wallbox app are reflected too.
+
+To keep the device page uncluttered, **all entities for slots 2–4 are disabled by default** in Home Assistant (`enabled_by_default: false`) — that includes the enable switch, start/stop times and all 7 weekday switches. If you need an extra slot, enable its entities under **Settings → Devices & Services → Wallbox → Entities** (filter by "disabled"), then configure it like slot 1. Slot 1 is fully enabled out of the box.
+
+Per slot (`N` = 1–4):
+
+| Entity | Type | Writable | Notes |
+|---|---|---|---|
+| Schedule N Enable | switch | ✓ | Turn the slot on/off. Enabling a slot with no weekdays selected defaults all 7 days to on |
+| Schedule N Start | time | ✓ | Local wall-clock start (HH:MM). Only updates the start time — it never enables the slot. On a never-configured slot, stop defaults to start + 1 min (wraps midnight) |
+| Schedule N Stop | time | ✓ | Local wall-clock stop (HH:MM) |
+| Schedule N — 1 Monday … 7 Sunday | switch (×7) | ✓ | One per weekday (`config` category); named with a 1–7 prefix so they sort Mon→Sun |
+
+There is no separate delete button — turning **Schedule N Enable** off parks the slot (the charger has no true delete; all other fields are kept).
+
+Times are **local wall-clock** values — no timezone conversion (e.g. `09:00` → 0900, `22:05` → 2205). Max charging current is not per-slot; the slots use the charger's configured max (the existing **Max charging current** entity).
+
+#### Atomic `set_schedule` command (for automations)
+
+For automations and scripts there is also an atomic `set_schedule` **MQTT command** — no HA entity, just publish a JSON payload to `wallbox_<serial>/set_schedule/set` that fully specifies one slot in a single write:
+
+```yaml
+action: mqtt.publish
+data:
+  topic: wallbox_69DABC123456/set_schedule/set
+  payload: '{"slot":1,"enable":true,"start":"06:30","stop":"09:00","days":["weekdays"]}'
+```
+
+Replace `wallbox_<serial>` with the bridge's topic prefix (shown in the broker and used by all entity topics).
+
+| Field | Required | Format / default |
+|---|---|---|
+| `slot` | yes | 1–4 |
+| `start` | yes | `"HHMM"` or `"HH:MM"` (local) |
+| `stop` | yes | `"HHMM"` or `"HH:MM"` (local) |
+| `days` | yes | list of `mon`..`sun` (case-insensitive) and/or keywords `all`, `weekdays`, `weekends`, `none` |
+| `enable` | no | defaults to `true` |
+| `max_current` | no | defaults to `-1` (use the charger's configured max) |
+| `name` | no | defaults to the slot's current name |
+
+Malformed JSON, an out-of-range slot, a bad time, or an unrecognised day is logged as a warning and ignored — no command is sent. The command is only handled when `schedules_enabled = true`.
+
+Individual slots can also be driven from automations without JSON via the per-slot entities (e.g. `switch.schedule_1_enable`, `time.schedule_1_start` — check the entity IDs under the device page).
+
 ### Power Boost (optional, `power_boost_enabled = true`)
 
 | Entity | Type |
@@ -97,6 +143,7 @@ polling_interval_seconds = 1
 device_name              = Wallbox
 debug_sensors            = false
 power_boost_enabled      = false
+schedules_enabled        = false
 ```
 
 ### MQTT topic layout

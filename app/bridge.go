@@ -7,6 +7,7 @@ import (
 	"maps"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -34,6 +35,7 @@ func RunBridge(configPath string) {
 
 	w := wallbox.New()
 	w.IncludePowerBoost = c.Settings.PowerBoostEnabled
+	w.IncludeSchedules = c.Settings.SchedulesEnabled
 
 	w.RefreshData()
 
@@ -58,6 +60,9 @@ func RunBridge(configPath string) {
 	}
 
 	entityConfig := getEntities(w)
+	if c.Settings.SchedulesEnabled {
+		maps.Copy(entityConfig, getScheduleEntities(w))
+	}
 	if c.Settings.DebugSensors {
 		maps.Copy(entityConfig, getDebugEntities(w))
 	}
@@ -81,6 +86,14 @@ func RunBridge(configPath string) {
 			return
 		}
 		field := parts[1]
+		// set_schedule is a command-only topic (no HA entity): it takes the
+		// atomic JSON payload for one schedule slot.
+		if field == "set_schedule" && c.Settings.SchedulesEnabled {
+			payload := string(msg.Payload())
+			fmt.Println("Setting set_schedule", payload)
+			w.SetScheduleJSON(payload)
+			return
+		}
 		entity, ok := entityConfig[field]
 		if !ok || entity.Setter == nil {
 			// Ignore set commands for unknown or read-only entities.
@@ -109,7 +122,6 @@ func RunBridge(configPath string) {
 			config := map[string]any{
 				"~":                  topicPrefix + "/" + key,
 				"availability_topic": availabilityTopic,
-				"state_topic":        "~/state",
 				"unique_id":          uid,
 				"device": map[string]string{
 					"identifiers":  serialNumber,
@@ -119,6 +131,11 @@ func RunBridge(configPath string) {
 					"sw_version":   firmwareVersion,
 				},
 			}
+			// Button entities have no state; HA's button discovery schema
+			// rejects state_topic and logs a config warning.
+			if component != "button" {
+				config["state_topic"] = "~/state"
+			}
 			if val.Setter != nil {
 				config["command_topic"] = "~/set"
 			}
@@ -127,6 +144,18 @@ func RunBridge(configPath string) {
 			}
 			jsonPayload, _ := json.Marshal(config)
 			client.Publish("homeassistant/"+component+"/"+uid+"/config", 1, true, jsonPayload)
+		}
+
+		// Clear retained discovery configs for entities removed in this
+		// version so the stale entities disappear from Home Assistant: the
+		// schedule delete buttons and the set_schedule text entity (now a
+		// command-only topic). An empty retained payload removes the config.
+		if c.Settings.SchedulesEnabled {
+			for slot := 1; slot <= 4; slot++ {
+				topic := "homeassistant/button/" + serialNumber + "_schedule_" + strconv.Itoa(slot) + "_delete/config"
+				client.Publish(topic, 1, true, nil)
+			}
+			client.Publish("homeassistant/text/"+serialNumber+"_set_schedule/config", 1, true, nil)
 		}
 
 		// Re-establish command topic subscriptions.

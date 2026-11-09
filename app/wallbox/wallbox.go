@@ -65,6 +65,14 @@ type DataCache struct {
 		StateMachineState string // wallbox:wallboxsmachine::state        e.g. "A1"
 		ControlPilot      string // wallbox:wallboxsmachine::controlpilot  e.g. "A1"
 	}
+
+	// Schedules holds the current charging schedules read from the
+	// 'wallbox.schedules' table, keyed by schedule_id (slot 1..4). It is
+	// refreshed every poll alongside the other SQL reads so the schedule
+	// entities reflect the charger's actual state, including changes made
+	// from the Wallbox app. Writes never touch this table directly; they go
+	// through the schedule_manager Redis command (see publishScheduleUpdate).
+	Schedules map[int]ScheduleRow
 }
 
 // M2WMeasurement captures the valid flag and value from 6.8+ pub/sub M2W payloads.
@@ -124,11 +132,15 @@ type Wallbox struct {
 	PartNum     string `db:"part_number"`
 
 	IncludePowerBoost bool
-	mu                sync.RWMutex // Protects PubSub, HasSensorData, HasMeterData, and the Has*Data granular flags
-	dataMu            sync.RWMutex // Protects Data, HasStateHash, HasM2WHash
-	PubSub            PubSubData
-	HasSensorData     bool // true once EVENT_SENSORS_MEASURED received on /wbx/telemetry/events
-	HasMeterData      bool // true once EVENT_FIRMWARE_AND_METER_READINGS received on /wbx/micro2wallbox/events
+	// IncludeSchedules gates the schedules table read in RefreshData. When
+	// false the schedules query is skipped entirely (no per-poll MySQL load)
+	// and Data.Schedules stays nil.
+	IncludeSchedules bool
+	mu               sync.RWMutex // Protects PubSub, HasSensorData, HasMeterData, and the Has*Data granular flags
+	dataMu           sync.RWMutex // Protects Data, HasStateHash, HasM2WHash
+	PubSub           PubSubData
+	HasSensorData    bool // true once EVENT_SENSORS_MEASURED received on /wbx/telemetry/events
+	HasMeterData     bool // true once EVENT_FIRMWARE_AND_METER_READINGS received on /wbx/micro2wallbox/events
 
 	// Granular flags set only when the *specific* sensor IDs for each measurement
 	// group are actually received in a telemetry event. Pre-6.6 firmware may emit
@@ -159,6 +171,12 @@ type Wallbox struct {
 	// Using a context rather than a chan struct{} means it works correctly
 	// across multiple reconnect iterations (a closed channel cannot be reused).
 	cancelSubscriptions context.CancelFunc
+
+	// scheduleReqCounter supplies a monotonically increasing suffix for the
+	// request_id of each schedule command (e.g. "MQTTBRIDGE#5").
+	// Guarded by scheduleMu.
+	scheduleReqCounter int
+	scheduleMu         sync.Mutex
 }
 
 func New() *Wallbox {
@@ -299,6 +317,48 @@ func (w *Wallbox) RefreshData() {
 		err := w.sqlClient.QueryRow("SELECT `acumulated_energy` FROM `dca_values` ORDER BY `id` DESC LIMIT 1").Scan(&dcaEnergy)
 		if err == nil {
 			w.Data.SQL.DcaAccumulatedEnergy = dcaEnergy
+		}
+	}
+
+	// --- schedules ---
+	// Read the 4 fixed schedule slots so the schedule entities reflect the
+	// charger's actual state (including changes made from the Wallbox app).
+	// The table starts empty on a factory charger, so slots without a row get
+	// a zero-value default (Exists=false) — the entities then show defaults
+	// instead of unknown and setters use CMD_CREATE_SCHEDULE for them.
+	// Skipped entirely when schedules are disabled: the entities aren't
+	// registered and the query would be pure per-poll MySQL load.
+	if w.IncludeSchedules {
+		var rows []ScheduleRow
+		if err := w.sqlClient.Select(&rows, scheduleSelectQuery); err != nil {
+			fmt.Println("SQL RefreshData schedules error (skipping):", err)
+		} else {
+			schedules := make(map[int]ScheduleRow, 4)
+			for _, r := range rows {
+				r.Exists = true
+				schedules[r.ScheduleID] = r
+			}
+			for slot := 1; slot <= 4; slot++ {
+				if _, ok := schedules[slot]; !ok {
+					schedules[slot] = ScheduleRow{ScheduleID: slot}
+				}
+			}
+			// publishScheduleUpdate caches each write immediately, but
+			// schedule_manager persists it to MySQL asynchronously. If this
+			// poll ran before the commit, the MySQL row still has the
+			// pre-write state (and Exists=false for a just-created slot);
+			// installing it would make the next setter read-modify-write on
+			// stale data and revert the change. Keep the cached row while
+			// its ULID differs from MySQL's — schedule_manager stores the
+			// ULID we generated, so once they match MySQL has caught up and
+			// its row wins.
+			for slot, cached := range w.Data.Schedules {
+				fresh, ok := schedules[slot]
+				if ok && cached.Ulid != fresh.Ulid && time.Since(cached.UpdatedAt) < scheduleWriteGracePeriod {
+					schedules[slot] = cached
+				}
+			}
+			w.Data.Schedules = schedules
 		}
 	}
 }
